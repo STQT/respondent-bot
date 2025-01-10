@@ -1,15 +1,15 @@
 volumes:
-  toshmi_local_postgres_data: {}
-  toshmi_local_postgres_data_backups: {}
-  toshmi_local_redis_data: {}
+  toshmiosh_local_postgres_data: {}
+  toshmiosh_local_postgres_data_backups: {}
+  toshmiosh_local_redis_data: {}
 
 services:
   django: &django
     build:
       context: .
       dockerfile: ./compose/local/django/Dockerfile
-    image: toshmi_local_django
-    container_name: toshmi_local_django
+    image: toshmiosh_local_django
+    container_name: toshmiosh_local_django
     depends_on:
       - postgres
       - redis
@@ -26,26 +26,26 @@ services:
     build:
       context: .
       dockerfile: ./compose/production/postgres/Dockerfile
-    image: toshmi_production_postgres
-    container_name: toshmi_local_postgres
+    image: toshmiosh_production_postgres
+    container_name: toshmiosh_local_postgres
     volumes:
-      - toshmi_local_postgres_data:/var/lib/postgresql/data
-      - toshmi_local_postgres_data_backups:/backups
+      - toshmiosh_local_postgres_data:/var/lib/postgresql/data
+      - toshmiosh_local_postgres_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
 
   redis:
     image: docker.io/redis:6
-    container_name: toshmi_local_redis
+    container_name: toshmiosh_local_redis
 
     volumes:
-      - toshmi_local_redis_data:/data
+      - toshmiosh_local_redis_data:/data
 
 
   celeryworker:
     <<: *django
-    image: toshmi_local_celeryworker
-    container_name: toshmi_local_celeryworker
+    image: toshmiosh_local_celeryworker
+    container_name: toshmiosh_local_celeryworker
     depends_on:
       - redis
       - postgres
@@ -54,8 +54,8 @@ services:
 
   celerybeat:
     <<: *django
-    image: toshmi_local_celerybeat
-    container_name: toshmi_local_celerybeat
+    image: toshmiosh_local_celerybeat
+    container_name: toshmiosh_local_celerybeat
     depends_on:
       - redis
       - postgres
@@ -64,8 +64,8 @@ services:
 
   flower:
     <<: *django
-    image: toshmi_local_flower
-    container_name: toshmi_local_flower
+    image: toshmiosh_local_flower
+    container_name: toshmiosh_local_flower
     ports:
       - '5555:5555'
     command: /start-flower

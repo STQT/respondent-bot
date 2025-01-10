@@ -4,19 +4,20 @@ from aiogram.enums import ParseMode
 from django.conf import settings
 from django.urls import reverse
 
+from apps.bot.handlers.callback import callback_router
 from apps.bot.handlers.echo import echo_router
 from apps.bot.handlers.start import start_router
+from apps.bot.handlers.menu import menu_router
+from apps.bot.middlewares import UserInternalIdMiddleware
 
 
 def register_all_misc() -> (Dispatcher, Bot):
     # Dispatcher is a root router
     dp = Dispatcher()
+    dp.update.outer_middleware(UserInternalIdMiddleware())
     # Register all the routers from handlers package
-    dp.include_routers(
-        start_router,
-        echo_router,
-    )
-
+    routers = (start_router, menu_router, echo_router, callback_router)
+    dp.include_routers(*routers)
     # Initialize Bot instance with default bot properties which will be passed to all API calls
     bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     return dp, bot
