@@ -35,12 +35,12 @@ async def info_product_count(callback: types.CallbackQuery):
     _count, count = callback.data.split("_")
     await callback.answer(str(_("{count} ta")).format(count=count))
 
-
+@callback_router.callback_query(F.data.startswith("addtocart_"))
 async def add_to_cart(callback_query: types.CallbackQuery, state: FSMContext, user: TGUser | None):
     # Add to cart logic here
-    _cart, count, product_id = callback_query.data.split('_')
-    await callback_query.answer(_("Savatga qo'shildi"))
-    await callback_query.message.edit_caption(_("Qo'shildi: {count} ta").format(count=count))
+    _addtocart, count, product_id = callback_query.data.split('_')
+    await callback_query.answer(str(_("Savatga qo'shildi")))
+    await callback_query.message.edit_caption(str(_("Qo'shildi: {count} ta").format(count=count)))
     data = await state.get_data()
 
     key = f"shopping_cart:{callback_query.from_user.id}"

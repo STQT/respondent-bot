@@ -3,6 +3,7 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from apps.users.models import TGUser
+from apps.products.models import Category
 from apps.bot.keyboards.markups import make_row_keyboard
 from apps.bot.states import MenuStates
 
@@ -17,7 +18,12 @@ async def echo_handler(message: Message, state: FSMContext, user: TGUser | None)
 
     By default, message handler will handle all message types (like a text, photo, sticker etc.)
     """
-    menus = ["name", "name1"]
+    lang = user.lang
+    lang_str = f'name_{lang}'
+    menus = []
+    async for category in Category.objects.values('name_ru', 'name_uz'):
+        name_uz_data = category['name_uz']
+        menus.append(category.pop(lang_str, name_uz_data))
     await message.answer("ECHO:", reply_markup=make_row_keyboard(menus))
     await state.set_state(MenuStates.choose_menu)
 

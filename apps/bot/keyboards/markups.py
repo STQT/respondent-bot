@@ -36,11 +36,13 @@ def get_phone_keyboard():
     return keyboard
 
 
-def make_row_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
+def make_row_keyboard(items: list[str], add_back: bool = False) -> ReplyKeyboardMarkup:
     """
     Создаёт реплай-клавиатуру с кнопками в один ряд
     :param items: список текстов для кнопок
     :return: объект реплай-клавиатуры
     """
     row = [KeyboardButton(text=item) for item in items]
+    if add_back:
+        row.append(KeyboardButton(text=str(_("Назад"))))
     return ReplyKeyboardMarkup(keyboard=[row], resize_keyboard=True)
