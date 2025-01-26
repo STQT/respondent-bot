@@ -184,3 +184,5 @@ WEBHOOK_URL = env("WEBHOOK_URL")
 CSRF_TRUSTED_ORIGINS = [
     "https://toshmibot.leetcode.uz"
 ]
+STATIC_URL = "/static/"
+STATIC_ROOT = str(BASE_DIR / "staticfiles")

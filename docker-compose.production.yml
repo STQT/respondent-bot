@@ -3,6 +3,7 @@ volumes:
   production_postgres_data_backups: {}
   production_traefik: {}
   production_django_media: {}
+  production_django_static: {}
 
   production_redis_data: {}
 
@@ -17,6 +18,7 @@ services:
     image: apps_production_django
     volumes:
       - production_django_media:/app/apps/media
+      - production_django_static:/app/staticfiles
     depends_on:
       - postgres
       - redis
@@ -81,5 +83,6 @@ services:
       - django
     volumes:
       - production_django_media:/usr/share/nginx/media:ro
+      - production_django_static:/usr/share/nginx/static:ro
     ports:
       - '8010:80'
