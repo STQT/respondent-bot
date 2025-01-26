@@ -12,6 +12,7 @@ from .base import INSTALLED_APPS
 from .base import REDIS_URL
 from .base import SPECTACULAR_SETTINGS
 from .base import env
+from .base import BASE_DIR
 
 # GENERAL
 # ------------------------------------------------------------------------------
