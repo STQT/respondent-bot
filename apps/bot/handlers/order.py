@@ -135,7 +135,7 @@ async def handle_delivery_address(message: types.Message, state: FSMContext, use
     location = message.location
     order_data = await get_order_data(state)
     address = await get_address_from_geolocation(latitude=location.latitude, longitude=location.longitude)
-    order_data['address'] = address # noqa
+    order_data['address'] = address  # noqa
     # Создаем заказ с геолокацией
     order = await create_order(
         user,
@@ -157,7 +157,7 @@ async def handle_delivery_address(message: types.Message, state: FSMContext, use
 async def handle_text_address(message: types.Message, state: FSMContext, user: TGUser | None):
     address = message.text
     order_data = await get_order_data(state)
-    order_data['address'] = address # noqa
+    order_data['address'] = address  # noqa
 
     # Создаем заказ с текстовым адресом
     order = await create_order(
