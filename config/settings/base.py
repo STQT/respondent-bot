@@ -329,8 +329,8 @@ SPECTACULAR_SETTINGS = {
 }
 # Your stuff...
 # ------------------------------------------------------------------------------
-BOT_TOKEN = env("BOT_TOKEN")
+BOT_TOKEN = env("BOT_TOKEN", default="BOT")
 BOT_WEBHOOK_PATH = "bot"
 BOT_HOST = env("HOST", default="https://bot.example.uz")
-PAYMENT_PROVIDER_TOKEN = env("PAYMENT_PROVIDER_TOKEN")
-OPERATOR_CHAT_ID = env("OPERATOR_CHAT_ID")
+PAYMENT_PROVIDER_TOKEN = env("PAYMENT_PROVIDER_TOKEN", default="BOT")
+OPERATOR_CHAT_ID = env("OPERATOR_CHAT_ID", default="BOT")
