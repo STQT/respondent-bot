@@ -79,7 +79,6 @@ THIRD_PARTY_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "drf_spectacular",
-    "apps.contrib.clickuz",
 ]
 
 LOCAL_APPS = [
@@ -331,10 +330,5 @@ SPECTACULAR_SETTINGS = {
 BOT_TOKEN = env("BOT_TOKEN")
 BOT_WEBHOOK_PATH = "bot"
 BOT_HOST = env("HOST", default="https://bot.example.uz")
-CLICK_SETTINGS = {
-    'service_id': '26205',
-    'merchant_id': '26205',
-    'secret_key': 'Fl7DAeQmAMs80qI'
-}
 PAYMENT_PROVIDER_TOKEN = env("PAYMENT_PROVIDER_TOKEN")
 OPERATOR_CHAT_ID = env("OPERATOR_CHAT_ID")
