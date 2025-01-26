@@ -20,21 +20,6 @@ def product_inline_kb(product_id, product_count=1):
     return inline_kb.as_markup()
 
 
-def shopping_cart_kb(user_lang):
-    inline_kb = InlineKeyboardMarkup(row_width=2)
-    inline_kb.add(
-        InlineKeyboardButton(text=str(_("🛒 Maxsulot qo'shish"), locale=user_lang),
-                             callback_data='close'),
-        InlineKeyboardButton(text=str(_('🚖 Buyurtma berish'), locale=user_lang),
-                             callback_data='buy'),
-    )
-    inline_kb.add(
-        InlineKeyboardButton(text=str(_("🗑 Savatni tozalash"), locale=user_lang),
-                             callback_data=f'clean_trash'),
-    )
-    return inline_kb
-
-
 def shopping_cart_clean_kb():
     inline_kb = InlineKeyboardMarkup(row_width=2)
     inline_kb.add(
@@ -59,3 +44,11 @@ def approve_delivery_buy():
                              callback_data='delivery_back')
     )
     return inline_kb
+
+
+def cart_actions_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=str(_("🗑 Savatni tozalash")), callback_data="clearcart")],
+        [InlineKeyboardButton(text=str(_("🚖 Buyurtma berish")), callback_data="checkout")],
+        [InlineKeyboardButton(text=str(_("🛒 Maxsulot qo'shish")), callback_data="close")],
+    ])

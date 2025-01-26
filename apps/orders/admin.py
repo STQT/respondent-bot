@@ -11,3 +11,5 @@ class OrderProductInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderProductInline]
+    list_display = ['customer_name', 'customer_phone',
+                    'customer_address', 'total_sum', 'created_at', 'cash_type']

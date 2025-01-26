@@ -19,7 +19,7 @@ menu_router = Router()
 @menu_router.message(MenuStates.choose_menu)
 async def menu_choose_handler(message: Message, state: FSMContext, user: TGUser | None) -> None:
     menu_name = message.text
-    if menu_name == str(_("Назад")):
+    if menu_name == str(_("Ortga")):
         await echo_handler(message, state, user)
         return
     lang = user.lang
@@ -48,6 +48,9 @@ async def menu_choose_handler(message: Message, state: FSMContext, user: TGUser 
 @menu_router.message(MenuStates.choose_product)
 async def product_choose_handler(message: Message, state: FSMContext, user: TGUser | None) -> None:
     menu_name = message.text
+    if menu_name == str(_("Ortga")):
+        await echo_handler(message, state, user)
+        return
     lang = user.lang
     lang_str = f'name_{lang}'
 
@@ -72,22 +75,14 @@ async def product_choose_handler(message: Message, state: FSMContext, user: TGUs
                 await message.answer(str(_("Изображение не найдено на сервере.")))
                 return
         elif product.photo_uri:  # Альтернативный путь (можно дополнить обработку скачивания)
-            await message.answer(_("Пока поддерживается только отправка локальных изображений."))
+            await message.answer(str(_("Пока поддерживается только отправка локальных изображений.")))
             return
         else:
-            await message.answer(_("Фото отсутствует."))
+            await message.answer(str(_("Фото отсутствует.")))
             return
 
-
-
-        # Отправка сообщения
-        await message.answer_photo(
-            photo=photo,
-            caption=caption,
-            reply_markup=product_inline_kb(product.pk)
-        )
     else:
         await message.answer(
             str(_("Quyida ko'rsatilgan tugmadan birontasini tanlang 👇")),
-            reply_markup=product_inline_kb("1")
+            reply_markup=None
         )

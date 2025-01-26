@@ -29,6 +29,7 @@ TIME_ZONE = "Asia/Tashkent"
 LANGUAGE_CODE = "uz-UZ"
 # https://docs.djangoproject.com/en/dev/ref/settings/#languages
 from django.utils.translation import gettext_lazy as _
+
 LANGUAGES = [
     ('uz-UZ', _("O'zbek tili")),
     ('ru-RU', _('Русский язык')),
@@ -78,6 +79,7 @@ THIRD_PARTY_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "drf_spectacular",
+    "apps.contrib.clickuz",
 ]
 
 LOCAL_APPS = [
@@ -329,3 +331,10 @@ SPECTACULAR_SETTINGS = {
 BOT_TOKEN = env("BOT_TOKEN")
 BOT_WEBHOOK_PATH = "bot"
 BOT_HOST = env("HOST", default="https://bot.example.uz")
+CLICK_SETTINGS = {
+    'service_id': '26205',
+    'merchant_id': '26205',
+    'secret_key': 'Fl7DAeQmAMs80qI'
+}
+PAYMENT_PROVIDER_TOKEN = "333605228:LIVE:18481_8AC1382F51BCDEBD1C91D64D0DE73C55D5CB95A6"
+OPERATOR_CHAT_ID = 390736292

@@ -10,3 +10,8 @@ class MenuStates(StatesGroup):
     choose_menu = State()
     choose_product = State()
     # choose_cash_type = State()
+
+
+class OrderStates(StatesGroup):
+    payment_type = State()
+    delivery_address = State()

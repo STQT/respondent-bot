@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.bot.keyboards.markups import get_language_keyboards, TG_LANGUAGES, get_phone_keyboard, make_row_keyboard
 from apps.bot.states import RegistrationStates, MenuStates
-from apps.bot.utils import async_get_or_create_user
+from apps.bot.utils import async_get_or_create_user, send_category_list_message
 from apps.users.models import TGUser
 
 start_router = Router()
@@ -20,27 +20,30 @@ async def command_start_handler(message: Message, state: FSMContext, user: TGUse
     """
     This handler receives messages with `/start` command
     """
-    print("BYE")
-    obj, created = await async_get_or_create_user(
+    obj, _created = await async_get_or_create_user(
         id=message.from_user.id,
         defaults={
             "fullname": message.from_user.full_name,
             "username": message.from_user.username
         }
     )
-    if created:
+    if not obj.lang:
         await message.answer(
-            _("ToshmiOsh telegram botiga xush kelibsiz, <b>{full_name}!</b>\n"
-              "Tilni tanlang").format(
+            str(_("ToshmiOsh telegram botiga xush kelibsiz, <b>{full_name}!</b>\n"
+                  "Tilni tanlang")).format(
                 full_name=message.from_user.full_name),
             resize_keyboard=True,
             reply_markup=get_language_keyboards()
         )
         await state.set_state(RegistrationStates.choose_language)
+    elif not obj.phone:
+        await message.answer(
+            text=str(_("Botdan foydalanish uchun telefon raqamingiz yuboring.")),
+            reply_markup=get_phone_keyboard()
+        )
+        await state.set_state(RegistrationStates.get_phone_number)
     else:
-        await message.answer(_(
-            "Salom, <b>{full_name}!</b> Buyurtma berish uchun quyidagi tugmalardan bosing! 👇"
-        ).format(full_name=message.from_user.full_name))
+        await send_category_list_message(message, state, user)
 
 
 @start_router.message(
@@ -48,10 +51,9 @@ async def command_start_handler(message: Message, state: FSMContext, user: TGUse
     F.text.in_(TG_LANGUAGES)
 )
 async def language_chosen(message: Message, state: FSMContext):
-    print("HELLO")
-    await state.update_data(lang=message.text)
+    await state.update_data(lang=message.text) # TODO: need to convert text |uz |ru
     await message.answer(
-        text="Botdan foydalanish uchun telefon raqamingiz yuboring.",
+        text=str(_("Botdan foydalanish uchun telefon raqamingiz yuboring.")),
         reply_markup=get_phone_keyboard()
     )
     await state.set_state(RegistrationStates.get_phone_number)
@@ -61,17 +63,15 @@ async def language_chosen(message: Message, state: FSMContext):
     RegistrationStates.get_phone_number,
     F.content_type.in_({types.ContentType.CONTACT, types.ContentType.TEXT})
 )
-async def phone_getting(message: Message, state: FSMContext):
+async def phone_getting(message: Message, state: FSMContext, user: TGUser | None):
     if message.contact:
         contact = message.contact.phone_number
     else:
         contact = message.text
     if uzbekistan_phone_regex.match(contact):
-        menu_names = ["name", "name2"]
-        await message.answer(
-            "Buyurtma berish uchun quyidagi menyudan foydalaning 👇",
-            reply_markup=make_row_keyboard(menu_names)
-        )
+        await send_category_list_message(message, state, user)
+        user.phone = contact
+        await user.asave()
         # Сброс состояния
         await state.clear()
         await state.set_state(MenuStates.choose_menu)
@@ -79,4 +79,3 @@ async def phone_getting(message: Message, state: FSMContext):
         await message.answer("Iltimos faqat O'zbekistonga tegishli raqamni yuboring")
         # Сохраняем состояние ожидания
         await state.set_state(RegistrationStates.get_phone_number)
-

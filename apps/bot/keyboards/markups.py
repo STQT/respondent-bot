@@ -36,6 +36,20 @@ def get_phone_keyboard():
     return keyboard
 
 
+def get_payment_type_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=str(_("Naqd")))],
+            [KeyboardButton(text=str(_("ClickUZ")))],
+            [KeyboardButton(text=str(_("Yetkazib berish")))],
+            [KeyboardButton(text=str(_("Ortga")))],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+    return keyboard
+
+
 def make_row_keyboard(items: list[str], add_back: bool = False) -> ReplyKeyboardMarkup:
     """
     Создаёт реплай-клавиатуру с кнопками в один ряд
@@ -43,6 +57,9 @@ def make_row_keyboard(items: list[str], add_back: bool = False) -> ReplyKeyboard
     :return: объект реплай-клавиатуры
     """
     row = [KeyboardButton(text=item) for item in items]
+    bottom_row = []
     if add_back:
-        row.append(KeyboardButton(text=str(_("Назад"))))
-    return ReplyKeyboardMarkup(keyboard=[row], resize_keyboard=True)
+        bottom_row.append(KeyboardButton(text=str(_("Ortga"))))
+    else:
+        bottom_row.append(KeyboardButton(text=str(_("Savat"))))
+    return ReplyKeyboardMarkup(keyboard=[row, bottom_row], resize_keyboard=True)

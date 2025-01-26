@@ -1,7 +1,13 @@
 from django.core.cache import cache
 from django.db import IntegrityError
 
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+
 from apps.users.models import TGUser
+from apps.bot.states import MenuStates
+from apps.products.models import Category
+from apps.bot.keyboards.markups import make_row_keyboard
 
 
 async def async_get_or_create_user(defaults=None, **kwargs):
@@ -25,42 +31,12 @@ async def async_get_or_create_user(defaults=None, **kwargs):
     return obj, created
 
 
-def get_user_shopping_cart(user_id):
-    key = f"shopping_cart:{user_id}"
-    # Получаем корзину из кэша
-    cart_items = cache.get(key)
-
-    # Если корзина не найдена, можно вернуться пустому словарю
-    if not cart_items:
-        return {}
-
-    # Преобразуем из байтов в строки
-    decoded_cart_items = {key.decode('utf-8'): value.decode('utf-8') for key, value in cart_items.items()}
-    return decoded_cart_items
-
-
-def get_cart_items_list(cart_items):
-    items = []
-    for item_key, price in cart_items.items():
-        item_name, count = item_key.split(":")
-        items.append({'name': item_name, 'count': count})
-    return items
-
-
-def get_cart_items_text(cart_items):
-    cart_items_text = ""
-    total_price = 0
-    for item_key, price in cart_items.items():
-        item_name, count = item_key.split(":")
-        item_price = int(price)
-        item_total_price = item_price * int(count)
-        total_price += item_total_price
-        cart_items_text += f"{count} ✖️ {item_name} {item_price} so'm\n"
-
-    return cart_items_text, total_price
-
-
-def clear_user_shopping_cart(user_id):
-    key = f"shopping_cart:{user_id}"
-    # Удаляем корзину из кэша
-    cache.delete(key)
+async def send_category_list_message(message: Message, state: FSMContext, user: TGUser | None):
+    lang = user.lang
+    lang_str = f'name_{lang}'
+    menus = []
+    async for category in Category.objects.values('name_ru', 'name_uz'):
+        name_uz_data = category['name_uz']
+        menus.append(category.pop(lang_str, name_uz_data))
+    await message.answer("ECHO:", reply_markup=make_row_keyboard(menus))
+    await state.set_state(MenuStates.choose_menu)

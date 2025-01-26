@@ -1,9 +1,13 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
-from django.utils.translation import gettext_lazy as _
 from django.core.cache import cache
+from django.utils.translation import gettext_lazy as _
 
 from apps.bot.keyboards.inline import product_inline_kb
+from apps.bot.keyboards.markups import get_payment_type_keyboard
+from apps.bot.states import OrderStates
+from apps.bot.utils import send_category_list_message
+from apps.products.models import Product
 from apps.users.models import TGUser
 
 callback_router = Router()
@@ -35,6 +39,7 @@ async def info_product_count(callback: types.CallbackQuery):
     _count, count = callback.data.split("_")
     await callback.answer(str(_("{count} ta")).format(count=count))
 
+
 @callback_router.callback_query(F.data.startswith("addtocart_"))
 async def add_to_cart(callback_query: types.CallbackQuery, state: FSMContext, user: TGUser | None):
     # Add to cart logic here
@@ -44,22 +49,66 @@ async def add_to_cart(callback_query: types.CallbackQuery, state: FSMContext, us
     data = await state.get_data()
 
     key = f"shopping_cart:{callback_query.from_user.id}"
-    category = data.get("category")
-    try:
-        item_key = f"{data['product']}:{count}"
-        # Сохраняем данные в кэш Django
-        cache.set(f"{key}:{item_key}", data['price'], timeout=60*60*24)  # timeout — время хранения в кэше, например, 1 день
-    except Exception as _e:
-        await callback_query.message.answer(_("Server bilan ulanishda muammo bo'ldi. Boshidan uruning"))
+    # try:
+    item_key = f"{product_id}:{count}"
+    product = await Product.objects.aget(pk=product_id)
+    # Сохраняем данные в кэш Django
+    cache.set(f"{key}:{item_key}", product.price * count,
+              timeout=60 * 60 * 24)  # timeout — время хранения в кэше, например, 1 день
+    # except Exception as _e:
+    #     await callback_query.message.answer(str(_("Server bilan ulanishda muammo bo'ldi. Boshidan uruning")))
 
-    # Если категория присутствует, показываем продукты в этой категории
-    if category:
-        products, _status = await get_products(category=category, user_lang=user_lang)
-        await callback_query.message.answer(_("Muzqaymoqni tanlang"),
-                                            reply_markup=generate_category_keyboard(products, user_lang))
-        await BuyState.get_product.set()
-    else:
-        categories, _status = await get_categories()
-        await callback_query.message.answer(_("Muzqaymoq turini tanlang."),
-                                            reply_markup=generate_category_keyboard(categories, user_lang))
-        await BuyState.get_category.set()
+    await send_category_list_message(callback_query.message, state, user)
+
+
+@callback_router.callback_query(F.data.startswith("clearcart"))
+async def clear_cart(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    key = f"shopping_cart:{user_id}"
+    cart_items = cache.keys(f"{key}:*")
+
+    for item in cart_items:
+        cache.delete(item)
+
+    await callback_query.answer(str(_("Savat tozalandi")), show_alert=True)
+    await callback_query.message.delete()
+
+
+@callback_router.callback_query(F.data.startswith("checkout"))
+async def checkout(callback_query: types.CallbackQuery, state: FSMContext):
+    user_id = callback_query.from_user.id
+    key = f"shopping_cart:{user_id}"
+    cart_items = cache.keys(f"{key}:*")
+
+    if not cart_items:
+        await callback_query.answer(str(_("Savat bo'sh")), show_alert=True)
+        return
+
+    # Сохраняем детали заказа в состоянии
+    order_items = []
+    total_sum = 0
+
+    for item in cart_items:
+        product_id, count = item.split(":")[-2:]
+        count = int(count)
+        product = await Product.objects.aget(pk=product_id)
+        total_price = product.price * count
+        total_sum += total_price
+        order_items.append({"product": product, "count": count, "price": total_price})
+        cache.delete(item)
+
+    await state.update_data(order_items=order_items, total_sum=total_sum)
+
+    # Запрашиваем способ оплаты
+    await callback_query.message.answer(
+        str(_("To'lov turini tanlang 👇")),
+        reply_markup=get_payment_type_keyboard()
+    )
+    await callback_query.message.delete()
+    await state.set_state(OrderStates.payment_type)
+
+
+@callback_router.callback_query(F.data.startswith("close"))
+async def clear_cart(callback_query: types.CallbackQuery, state, user):
+    await callback_query.message.delete()
+    await send_category_list_message(callback_query.message, state, user)
