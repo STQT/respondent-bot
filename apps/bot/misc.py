@@ -41,7 +41,7 @@ def get_webhook_url():
     host: str = settings.BOT_HOST
     if host.endswith("/"):
         host = host[:-1]
-    return host + reverse(settings.BOT_WEBHOOK_PATH, args=(settings.BOT_TOKEN,))
+    return host + reverse("bot:" + settings.BOT_WEBHOOK_PATH, args=(settings.BOT_TOKEN,))
 
 
 async def start_webhook() -> None:
