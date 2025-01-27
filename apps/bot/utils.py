@@ -1,5 +1,5 @@
-from django.core.cache import cache
 from django.db import IntegrityError
+from django.utils.translation import gettext_lazy as _
 
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
@@ -38,5 +38,7 @@ async def send_category_list_message(message: Message, state: FSMContext, user: 
     async for category in Category.objects.values('name_ru', 'name_uz'):
         name_uz_data = category['name_uz']
         menus.append(category.pop(lang_str, name_uz_data))
-    await message.answer("ECHO:", reply_markup=make_row_keyboard(menus))
+    await message.answer(
+        str(_("Ushbu botdan foydalanish uchun quyidagi tugmalardan foydalaning👇")),
+        reply_markup=make_row_keyboard(menus))
     await state.set_state(MenuStates.choose_menu)

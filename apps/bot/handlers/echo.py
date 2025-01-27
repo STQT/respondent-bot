@@ -25,10 +25,3 @@ async def echo_handler(message: Message, state: FSMContext, user: TGUser | None)
         await view_cart(message, state, user)
     else:
         await send_category_list_message(message, state, user)
-
-    # try:
-    #     # Send a copy of the received message
-    #     await message.send_copy(chat_id=message.chat.id)
-    # except TypeError:
-    #     # But not all the types is supported to be copied so need to handle it
-    #     await message.answer("Nice try!")

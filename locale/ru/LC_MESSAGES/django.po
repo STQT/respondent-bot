@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-01-27 22:11+0500\n"
+"POT-Creation-Date: 2025-01-27 23:28+0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -89,49 +89,49 @@ msgstr ""
 msgid "Quyida ko'rsatilgan tugmadan birontasini tanlang 👇"
 msgstr ""
 
-#: apps/bot/handlers/order.py:77 apps/bot/handlers/order.py:85
+#: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:84
 #: apps/bot/keyboards/markups.py:5 apps/bot/keyboards/markups.py:42
 msgid "Naqd"
 msgstr ""
 
-#: apps/bot/handlers/order.py:77 apps/bot/handlers/order.py:90
-#: apps/bot/handlers/order.py:191 apps/bot/keyboards/markups.py:43
+#: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:89
+#: apps/bot/handlers/order.py:190 apps/bot/keyboards/markups.py:43
 #: apps/orders/models.py:9
 msgid "ClickUZ"
 msgstr ""
 
-#: apps/bot/handlers/order.py:77 apps/bot/handlers/order.py:119
-#: apps/bot/handlers/order.py:142 apps/bot/handlers/order.py:165
+#: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:118
+#: apps/bot/handlers/order.py:141 apps/bot/handlers/order.py:164
 #: apps/bot/keyboards/markups.py:44
 msgid "Yetkazib berish"
 msgstr ""
 
-#: apps/bot/handlers/order.py:93
+#: apps/bot/handlers/order.py:92
 msgid "Sizning buyurtmangiz"
 msgstr ""
 
-#: apps/bot/handlers/order.py:94
+#: apps/bot/handlers/order.py:93
 msgid "Quyidagi mahsulotlar uchun to'lov:"
 msgstr ""
 
-#: apps/bot/handlers/order.py:98
+#: apps/bot/handlers/order.py:97
 #, python-brace-format
 msgid "{product} ({count} dona)"
 msgstr ""
 
-#: apps/bot/handlers/order.py:123
+#: apps/bot/handlers/order.py:122
 msgid "📍 Manzilni yuborish"
 msgstr ""
 
-#: apps/bot/handlers/order.py:128
+#: apps/bot/handlers/order.py:127
 msgid "Iltimos, manzilingizni yuboring 📍 yoki manzilni yozing ✏️"
 msgstr ""
 
-#: apps/bot/handlers/order.py:149 apps/bot/handlers/order.py:172
+#: apps/bot/handlers/order.py:148 apps/bot/handlers/order.py:171
 msgid "Buyurtmangiz yetkazilmoqda. Tez orada sizga yetib boradi."
 msgstr ""
 
-#: apps/bot/handlers/order.py:196
+#: apps/bot/handlers/order.py:195
 #, python-brace-format
 msgid ""
 "To'lov amalga oshdi!\n"
@@ -140,12 +140,12 @@ msgid ""
 "Summa: {summa} {currency}"
 msgstr ""
 
-#: apps/bot/handlers/order.py:215
+#: apps/bot/handlers/order.py:214
 #, python-brace-format
 msgid "{product} ({count} dona) - {price} UZS"
 msgstr ""
 
-#: apps/bot/handlers/order.py:226
+#: apps/bot/handlers/order.py:225
 #, python-brace-format
 msgid ""
 "Buyurtmangiz qabul qilindi!\n"
@@ -203,6 +203,10 @@ msgstr ""
 
 #: apps/bot/keyboards/markups.py:31
 msgid "📱 Telefon yuborish"
+msgstr ""
+
+#: apps/bot/utils.py:42
+msgid "Ushbu botdan foydalanish uchun quyidagi tugmalardan foydalaning👇"
 msgstr ""
 
 #: apps/orders/apps.py:8
