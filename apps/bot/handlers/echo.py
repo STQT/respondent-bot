@@ -2,9 +2,7 @@ from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
-from django.conf import settings
 from django.utils.translation import gettext_lazy as _
-from aiogram import F
 
 from apps.bot.handlers.cart import view_cart
 from apps.bot.utils import send_category_list_message

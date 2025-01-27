@@ -6,9 +6,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, FSInputFile
 from django.utils.translation import gettext_lazy as _
 
+from apps.bot.handlers.cart import view_cart
 from apps.bot.keyboards.inline import product_inline_kb
 from apps.bot.keyboards.markups import make_row_keyboard
 from apps.bot.states import MenuStates
+from apps.bot.utils import send_category_list_message
 from apps.products.models import Product, Category
 from apps.bot.handlers.echo import echo_handler
 from apps.users.models import TGUser
@@ -51,6 +53,9 @@ async def product_choose_handler(message: Message, state: FSMContext, user: TGUs
     if menu_name == str(_("Ortga")):
         await echo_handler(message, state, user)
         return
+    elif menu_name == str(_("Savat")):
+        await view_cart(message, state, user)
+        return
     lang = user.lang
     lang_str = f'name_{lang}'
 
@@ -82,7 +87,4 @@ async def product_choose_handler(message: Message, state: FSMContext, user: TGUs
             return
 
     else:
-        await message.answer(
-            str(_("Quyida ko'rsatilgan tugmadan birontasini tanlang 👇")),
-            reply_markup=None
-        )
+        await send_category_list_message(message, state, user)
