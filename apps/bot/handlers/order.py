@@ -1,10 +1,9 @@
 import requests
-from aiogram import Router, types
+from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, LabeledPrice, PreCheckoutQuery
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
-from magic_filter import F
 
 from apps.bot.states import OrderStates
 from apps.orders.models import Order, OrderProduct
