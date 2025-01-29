@@ -7,5 +7,4 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         url = ClickUz.generate_url("3", 1000, "https://google.com")
-        print(url)
         return url
