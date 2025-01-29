@@ -46,18 +46,13 @@ async def add_to_cart(callback_query: types.CallbackQuery, state: FSMContext, us
     _addtocart, count, product_id = callback_query.data.split('_')
     await callback_query.answer(str(_("Savatga qo'shildi")))
     await callback_query.message.edit_caption(str(_("Qo'shildi: {count} ta").format(count=count)))
-    data = await state.get_data()
-
     key = f"shopping_cart:{callback_query.from_user.id}"
     # try:
     item_key = f"{product_id}:{count}"
     product = await Product.objects.aget(pk=product_id)
     # Сохраняем данные в кэш Django
     cache.set(f"{key}:{item_key}", product.price * count,
-              timeout=60 * 60 * 24)  # timeout — время хранения в кэше, например, 1 день
-    # except Exception as _e:
-    #     await callback_query.message.answer(str(_("Server bilan ulanishda muammo bo'ldi. Boshidan uruning")))
-
+              timeout=60 * 60 * 24)  # timeout — время хранения в кэше, например, 1 ден
     await send_category_list_message(callback_query.message, state, user)
 
 
@@ -75,7 +70,7 @@ async def clear_cart(callback_query: types.CallbackQuery):
 
 
 @callback_router.callback_query(F.data.startswith("checkout"))
-async def checkout(callback_query: types.CallbackQuery, state: FSMContext):
+async def checkout(callback_query: types.CallbackQuery, state: FSMContext, user: TGUser | None):
     user_id = callback_query.from_user.id
     key = f"shopping_cart:{user_id}"
     cart_items = cache.keys(f"{key}:*")
@@ -97,8 +92,19 @@ async def checkout(callback_query: types.CallbackQuery, state: FSMContext):
         order_items.append({"product": product, "count": count, "price": total_price})
         cache.delete(item)
 
-    await state.update_data(order_items=order_items, total_sum=total_sum)
+    # await state.update_data(order_items=order_items, total_sum=total_sum)
 
+    await state.update_data(
+        order_items=[
+            {
+                "product_id": item["product"].id,
+                "product_name": getattr(item["product"], "name_" + user.lang),
+                "price": item["price"],
+                "count": item["count"]
+            } for item in order_items
+        ],
+        total_sum=total_sum
+    )
     # Запрашиваем способ оплаты
     await callback_query.message.answer(
         str(_("To'lov turini tanlang 👇")),

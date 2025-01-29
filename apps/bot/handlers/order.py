@@ -62,7 +62,7 @@ async def create_order(user: TGUser, payment_type: str, total_sum: float, addres
 async def save_order_items(order, order_items, lang: str):
     """Сохранение позиций заказа в базе данных."""
     for item in order_items:
-        product_name = getattr(item["product"], f"name_{lang}")
+        product_name = item["product_name"]
         await OrderProduct.objects.acreate(
             order=order,
             product_name=product_name,
@@ -96,7 +96,7 @@ async def handle_payment_type(message: types.Message, state: FSMContext, user: T
                 label=str(_(
                     "{product} ({count} dona)"
                 )).format(
-                    product=getattr(item['product'], f'name_{user.lang}'),
+                    product=item['product_name'],
                     count=item['count']
                 ),
                 amount=item["price"] * 100,
@@ -213,7 +213,7 @@ async def finalize_order(order_data, message: types.Message, user: TGUser):
             str(_(
                 "{product} ({count} dona) - {price} UZS"
             )).format(
-                product=getattr(item['product'], f'name_{user.lang}'),
+                product=item['product_name'],
                 count=item['count'],
                 price=item['price']
             )
