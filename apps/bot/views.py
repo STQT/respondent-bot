@@ -1,9 +1,11 @@
 import json
 from django.http import HttpResponse
+from django.conf import settings
 
 from apps.bot.misc import register_all_misc
 
-dp, bot = register_all_misc()
+if not settings.DEBUG:
+    dp, bot = register_all_misc()
 
 
 async def process_update(request, token: str):

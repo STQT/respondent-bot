@@ -69,9 +69,9 @@ async def phone_getting(message: Message, state: FSMContext, user: TGUser | None
     else:
         contact = message.text
     if uzbekistan_phone_regex.match(contact):
-        await send_category_list_message(message, state, user)
         user.phone = contact
         await user.asave()
+        await send_category_list_message(message, state, user)
         # Сброс состояния
         await state.clear()
         await state.set_state(MenuStates.choose_menu)
