@@ -19,6 +19,7 @@ async def echo_handler(message: Message, state: FSMContext, user: TGUser | None)
 
     By default, message handler will handle all message types (like a text, photo, sticker etc.)
     """
+    print(state, "STATESSS")
     if message.text == str(_("Savat")):
         await view_cart(message, state, user)
     else:

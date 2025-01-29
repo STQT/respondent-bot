@@ -1,20 +1,30 @@
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.storage.memory import MemoryStorage
 from django.conf import settings
 from django.urls import reverse
+from redis.asyncio import Redis
 
 from apps.bot.handlers.callback import callback_router
 from apps.bot.handlers.echo import echo_router
+from apps.bot.handlers.menu import menu_router
 from apps.bot.handlers.order import order_router
 from apps.bot.handlers.start import start_router
-from apps.bot.handlers.menu import menu_router
 from apps.bot.middlewares import UserInternalIdMiddleware
 
 
+def get_redis_storage():
+    redis = Redis.from_url(settings.CACHES["default"]["LOCATION"])
+    return RedisStorage(redis)
+
+
 def register_all_misc() -> (Dispatcher, Bot):
+    redis_storage = get_redis_storage()
+    memory_storage = MemoryStorage()
     # Dispatcher is a root router
-    dp = Dispatcher()
+    dp = Dispatcher(storage=memory_storage if settings.DEBUG else redis_storage)
     dp.update.outer_middleware(UserInternalIdMiddleware())
     # Register all the routers from handlers package
     routers = (
