@@ -65,7 +65,7 @@ async def language_chosen(message: Message, state: FSMContext):
 )
 async def phone_getting(message: Message, state: FSMContext, user: TGUser | None):
     if message.contact:
-        contact = message.contact.phone_number
+        contact = "+" + message.contact.phone_number
     else:
         contact = message.text
     if uzbekistan_phone_regex.match(contact):
