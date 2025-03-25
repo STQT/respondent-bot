@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-01-27 23:28+0500\n"
+"POT-Creation-Date: 2025-03-26 01:12+0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -33,15 +33,15 @@ msgstr ""
 msgid "Qo'shildi: {count} ta"
 msgstr ""
 
-#: apps/bot/handlers/callback.py:73
+#: apps/bot/handlers/callback.py:68
 msgid "Savat tozalandi"
 msgstr ""
 
-#: apps/bot/handlers/callback.py:84 apps/bot/handlers/cart.py:17
+#: apps/bot/handlers/callback.py:79 apps/bot/handlers/cart.py:17
 msgid "Savat bo'sh"
 msgstr ""
 
-#: apps/bot/handlers/callback.py:104
+#: apps/bot/handlers/callback.py:110
 msgid "To'lov turini tanlang 👇"
 msgstr ""
 
@@ -58,49 +58,34 @@ msgid ""
 "Umumiy summa: {total_sum}"
 msgstr ""
 
-#: apps/bot/handlers/echo.py:24 apps/bot/keyboards/markups.py:64
-msgid "Savat"
-msgstr ""
-
-#: apps/bot/handlers/menu.py:22 apps/bot/handlers/menu.py:51
-#: apps/bot/keyboards/markups.py:45 apps/bot/keyboards/markups.py:62
-msgid "Ortga"
-msgstr ""
-
-#: apps/bot/handlers/menu.py:41
+#: apps/bot/handlers/menu.py:39
 msgid "Maxsulotni tanlang"
 msgstr ""
 
-#: apps/bot/handlers/menu.py:75
-msgid "Изображение не найдено на сервере."
+#: apps/bot/handlers/menu.py:74
+msgid "Rasm bizni serverda topilmadi."
 msgstr ""
 
-#: apps/bot/handlers/menu.py:78
-msgid "Пока поддерживается только отправка локальных изображений."
+#: apps/bot/handlers/menu.py:77
+msgid "Xozircha faqat lokal tarmoqdagi rasmlarni yuborish ishlaydi."
 msgstr ""
 
-#: apps/bot/handlers/menu.py:81
-msgid "Фото отсутствует."
-msgstr ""
-
-#: apps/bot/handlers/menu.py:86
-msgid "Quyida ko'rsatilgan tugmadan birontasini tanlang 👇"
+#: apps/bot/handlers/menu.py:80
+msgid "Foto mavjud emas."
 msgstr ""
 
 #: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:84
-#: apps/bot/keyboards/markups.py:5 apps/bot/keyboards/markups.py:42
 msgid "Naqd"
 msgstr ""
 
 #: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:89
-#: apps/bot/handlers/order.py:190 apps/bot/keyboards/markups.py:43
-#: apps/orders/models.py:9
+#: apps/bot/handlers/order.py:190 apps/orders/models.py:9
 msgid "ClickUZ"
 msgstr ""
 
 #: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:118
 #: apps/bot/handlers/order.py:141 apps/bot/handlers/order.py:164
-#: apps/bot/keyboards/markups.py:44
+#: apps/bot/keyboards/markups.py:51
 msgid "Yetkazib berish"
 msgstr ""
 
@@ -156,15 +141,12 @@ msgid ""
 "Tez orada operator siz bilan bog'lanadi."
 msgstr ""
 
-#: apps/bot/handlers/start.py:32
-#, python-brace-format
-msgid ""
-"ToshmiOsh telegram botiga xush kelibsiz, <b>{full_name}!</b>\n"
-"Tilni tanlang"
+#: apps/bot/handlers/start.py:51
+msgid "Quyidagi tugmalardan foydalaning👇"
 msgstr ""
 
-#: apps/bot/handlers/start.py:41 apps/bot/handlers/start.py:56
-msgid "Botdan foydalanish uchun telefon raqamingiz yuboring."
+#: apps/bot/handlers/start.py:74
+msgid "Iltimos faqat O'zbekistonga tegishli raqamni yuboring"
 msgstr ""
 
 #: apps/bot/keyboards/inline.py:17
@@ -179,7 +161,7 @@ msgstr ""
 msgid "✖️ Yo'q"
 msgstr ""
 
-#: apps/bot/keyboards/inline.py:43
+#: apps/bot/keyboards/inline.py:43 apps/bot/keyboards/markups.py:8
 msgid "⬅️ Ortga"
 msgstr ""
 
@@ -195,16 +177,36 @@ msgstr ""
 msgid "🛒 Mahsulot qo'shish"
 msgstr ""
 
-#: apps/bot/keyboards/markups.py:5
-msgid "Click"
+#: apps/bot/keyboards/markups.py:7
+msgid "💴 Naqd"
 msgstr ""
 
-#: apps/bot/keyboards/markups.py:31
+#: apps/bot/keyboards/markups.py:7
+msgid "💲 Click"
+msgstr ""
+
+#: apps/bot/keyboards/markups.py:9
+msgid "🌎 Tilni sozlash"
+msgstr ""
+
+#: apps/bot/keyboards/markups.py:10
+msgid "🛒 Savat"
+msgstr ""
+
+#: apps/bot/keyboards/markups.py:38
 msgid "📱 Telefon yuborish"
 msgstr ""
 
-#: apps/bot/utils.py:42
+#: apps/bot/utils.py:45
 msgid "Ushbu botdan foydalanish uchun quyidagi tugmalardan foydalaning👇"
+msgstr ""
+
+#: apps/bot/utils.py:52
+msgid "Iltimos, kerakli tilni tanlang👇"
+msgstr ""
+
+#: apps/bot/utils.py:60
+msgid "Botdan foydalanish uchun telefon raqamingiz yuboring."
 msgstr ""
 
 #: apps/orders/apps.py:8

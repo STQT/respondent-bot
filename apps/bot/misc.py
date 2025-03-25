@@ -12,6 +12,7 @@ from apps.bot.handlers.echo import echo_router
 from apps.bot.handlers.menu import menu_router
 from apps.bot.handlers.order import order_router
 from apps.bot.handlers.start import start_router
+from apps.bot.handlers.lang import lang_router
 from apps.bot.middlewares import UserInternalIdMiddleware
 
 
@@ -31,6 +32,7 @@ def register_all_misc() -> (Dispatcher, Bot):
         start_router,
         menu_router,
         order_router,
+        lang_router,
         echo_router,
         callback_router
     )

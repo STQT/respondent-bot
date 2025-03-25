@@ -37,7 +37,7 @@ class User(AbstractUser):
 class TGUser(Model):
     id = BigIntegerField(verbose_name=_("ID пользователя"), db_index=True, primary_key=True, unique=True)
     username = CharField(verbose_name=_("Имя пользователя"), null=True, blank=True, max_length=255)
-    lang = CharField(verbose_name=_("Язык пользователя"), default="uz", max_length=2)
+    lang = CharField(verbose_name=_("Язык пользователя"), max_length=2, null=True, blank=True)
     fullname = CharField(verbose_name=_("Полное имя"), max_length=255)
     phone = CharField(verbose_name=_("Телефонный номер"), max_length=20, blank=True, null=True)
     is_active = BooleanField(verbose_name=_("Активен?"), default=True)

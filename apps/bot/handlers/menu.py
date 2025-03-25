@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.bot.handlers.cart import view_cart
 from apps.bot.keyboards.inline import product_inline_kb
-from apps.bot.keyboards.markups import make_row_keyboard
+from apps.bot.keyboards.markups import make_row_keyboard, BACK_BUTTON, CART_BUTTON
 from apps.bot.states import MenuStates
 from apps.bot.utils import send_category_list_message
 from apps.products.models import Product, Category
@@ -21,16 +21,14 @@ menu_router = Router()
 @menu_router.message(MenuStates.choose_menu)
 async def menu_choose_handler(message: Message, state: FSMContext, user: TGUser | None) -> None:
     menu_name = message.text
-    if menu_name == str(_("Ortga")):
+    if menu_name == BACK_BUTTON:
         await echo_handler(message, state, user)
         return
-    lang = user.lang
+    lang = user.lang if user.lang else "uz"
     lang_str = f'name_{lang}'
     exists = await Category.objects.filter(**{lang_str: menu_name}).aexists()
     if exists:
         await state.update_data(category=message.text)
-        lang = user.lang
-        lang_str = f'name_{lang}'
         products = []
         category__filter = "category__" + lang_str
         async for product in Product.objects.filter(
@@ -48,13 +46,13 @@ async def menu_choose_handler(message: Message, state: FSMContext, user: TGUser 
 @menu_router.message(MenuStates.choose_product)
 async def product_choose_handler(message: Message, state: FSMContext, user: TGUser | None) -> None:
     menu_name = message.text
-    if menu_name == str(_("Ortga")):
+    if menu_name == BACK_BUTTON:
         await echo_handler(message, state, user)
         return
-    elif menu_name == str(_("Savat")):
+    elif menu_name == CART_BUTTON:
         await view_cart(message, state, user)
         return
-    lang = user.lang
+    lang = user.lang if user.lang else "uz"
     lang_str = f'name_{lang}'
 
     # Найти продукт
@@ -73,13 +71,13 @@ async def product_choose_handler(message: Message, state: FSMContext, user: TGUs
                         reply_markup=product_inline_kb(product.pk)
                     )
             else:
-                await message.answer(str(_("Изображение не найдено на сервере.")))
+                await message.answer(str(_("Rasm bizni serverda topilmadi.")))
                 return
         elif product.photo_uri:  # Альтернативный путь (можно дополнить обработку скачивания)
-            await message.answer(str(_("Пока поддерживается только отправка локальных изображений.")))
+            await message.answer(str(_("Xozircha faqat lokal tarmoqdagi rasmlarni yuborish ishlaydi.")))
             return
         else:
-            await message.answer(str(_("Фото отсутствует.")))
+            await message.answer(str(_("Foto mavjud emas.")))
             return
 
     else:

@@ -9,7 +9,7 @@ class RegistrationStates(StatesGroup):
 class MenuStates(StatesGroup):
     choose_menu = State()
     choose_product = State()
-    # choose_cash_type = State()
+    choose_language = State()
 
 
 class OrderStates(StatesGroup):
