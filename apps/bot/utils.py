@@ -1,14 +1,14 @@
+from aiogram import types
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
+from asgiref.sync import sync_to_async
 from django.db import IntegrityError
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from aiogram.types import Message
-from aiogram.fsm.context import FSMContext
-from django.utils.translation import override
-
+from apps.bot.states import PollStates
+from apps.polls.models import Poll, Respondent, Answer, Question
 from apps.users.models import TGUser
-from apps.bot.states import MenuStates, RegistrationStates
-from apps.products.models import Category
-from apps.bot.keyboards.markups import get_language_keyboards, get_phone_keyboard, make_row_keyboard
 
 
 async def async_get_or_create_user(defaults=None, **kwargs):
@@ -32,32 +32,51 @@ async def async_get_or_create_user(defaults=None, **kwargs):
     return obj, created
 
 
-async def send_category_list_message(message: Message, state: FSMContext, user: TGUser | None):
-    lang = user.lang
-    lang_str = f'name_{lang}'
-    menus = []
-    async for category in Category.objects.values('name_ru', 'name_uz'):
-        name_uz_data = category['name_uz']
-        menus.append(category.pop(lang_str, name_uz_data))
-    with override(user.lang):
-        print("HEREEE", user.lang)
-        await message.answer(
-            str(_("Ushbu botdan foydalanish uchun quyidagi tugmalardan foydalaning👇")),
-            reply_markup=make_row_keyboard(menus, lang=lang))
-    await state.set_state(MenuStates.choose_menu)
+async def get_current_question(message: Message, state: FSMContext, user: TGUser):
+    # Проверяем, есть ли активные опросы
+    active_polls = Poll.objects.filter(deadline__gte=timezone.now())
+    if not await active_polls.aexists():
+        await message.answer(str(_("Ҳозирча актив сўровномалар мавжуд эмас.")))
+        return
 
+    # Проверяем, есть ли незавершённый опрос
+    respondent = await Respondent.objects.filter(tg_user=user, poll__in=active_polls, finished_at__isnull=True).afirst()
+    if not respondent:
+        # Если нет, создаём нового
+        poll = await active_polls.afirst()  # Пока берём первый активный
+        respondent = await Respondent.objects.acreate(tg_user=user, poll=poll)
 
-async def send_languages_message(message: Message, state: FSMContext, user: TGUser | None, back_button=True):
-    await message.answer(
-        str(_("Iltimos, kerakli tilni tanlang👇")),
-        reply_markup=get_language_keyboards(back_button=back_button))
-    await state.set_state(MenuStates.choose_language)
+    # Получаем все вопросы
+    poll = await sync_to_async(lambda: respondent.poll)()
+    questions = await sync_to_async(lambda: poll.questions.all())()
 
+    # Получаем список вопросов, на которые уже есть ответы
+    answered_question_ids = Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
 
-async def send_phone_message(message: Message, state: FSMContext, user: TGUser | None):
-    with override(user.lang):
-        await message.answer(
-            text=str(_("Botdan foydalanish uchun telefon raqamingiz yuboring.")),
-            reply_markup=get_phone_keyboard()
+    # Определяем следующий вопрос
+    next_question = await questions.exclude(id__in=answered_question_ids).afirst()
+
+    if not next_question:
+        # Опрос завершён
+        respondent.finished_at = timezone.now()
+        await respondent.asave()
+        await message.answer(str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
+        return
+
+    # Сохраняем состояние и ID вопроса
+    await state.update_data(respondent_id=respondent.id, question_id=next_question.id)
+
+    await message.answer(str(_("Савол: ")) + next_question.text)
+
+    # Можно также вывести варианты ответов для закрытых типов
+    if next_question.type in [Question.QuestionTypeChoices.CLOSED_SINGLE, Question.QuestionTypeChoices.CLOSED_MULTIPLE]:
+        buttons = []
+        async for choice in next_question.choices.all():
+            buttons.append(types.KeyboardButton(text=choice.text))
+
+        markup = types.ReplyKeyboardMarkup(
+            keyboard=[[button] for button in buttons],
+            resize_keyboard=True
         )
-        await state.set_state(RegistrationStates.get_phone_number)
+        await message.answer(str(_("Жавобни танланг 👇")), reply_markup=markup)
+    await state.set_state(PollStates.waiting_for_answer)

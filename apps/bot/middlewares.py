@@ -24,5 +24,7 @@ class UserInternalIdMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         user = data["event_from_user"]
-        data["user"] = await self.get_internal_user(user_id=user.id, full_name=user.full_name, username=user.username)
+        data["user"] = await self.get_internal_user(
+            user_id=user.id, full_name=user.full_name, username=user.username
+        )
         return await handler(event, data)

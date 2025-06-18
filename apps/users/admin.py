@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .forms import UserAdminChangeForm
 from .forms import UserAdminCreationForm
-from .models import User, TGUser, UserLocations
+from .models import User, TGUser
 
 
 @admin.register(User)
@@ -34,9 +34,4 @@ class UserAdmin(auth_admin.UserAdmin):
 
 @admin.register(TGUser)
 class TGUserAdmin(admin.ModelAdmin):
-    list_display = ["id", "username", "fullname", "phone", "is_active"]
-
-
-@admin.register(UserLocations)
-class UserLocationsAdmin(admin.ModelAdmin):
-    list_display = ['user', 'longitude', 'latitude', 'name']
+    list_display = ["id", "username", "fullname", "gender", "is_active"]

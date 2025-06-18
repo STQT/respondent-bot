@@ -10,9 +10,8 @@ from redis.asyncio import Redis
 from apps.bot.handlers.callback import callback_router
 from apps.bot.handlers.echo import echo_router
 from apps.bot.handlers.menu import menu_router
-from apps.bot.handlers.order import order_router
 from apps.bot.handlers.start import start_router
-from apps.bot.handlers.lang import lang_router
+from apps.bot.handlers.poll import poll_router
 from apps.bot.middlewares import UserInternalIdMiddleware
 
 
@@ -31,8 +30,7 @@ def register_all_misc() -> (Dispatcher, Bot):
     routers = (
         start_router,
         menu_router,
-        order_router,
-        lang_router,
+        poll_router,
         echo_router,
         callback_router
     )

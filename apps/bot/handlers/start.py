@@ -1,76 +1,84 @@
-import re
-
-from aiogram import Router, F, types
+from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from django.utils.translation import gettext_lazy as _
-from django.utils.translation import override
 
-from apps.bot.keyboards.markups import get_language_keyboards, TG_LANGUAGES
-from apps.bot.states import RegistrationStates, MenuStates
-from apps.bot.utils import send_category_list_message, send_phone_message
+from apps.bot.states import RegisterForm
+from apps.bot.utils import get_current_question
 from apps.users.models import TGUser
 
 start_router = Router()
-uzbekistan_phone_regex = re.compile(r"^\+998\d{9}$")
+
+from apps.bot.keyboards.markups import (
+    get_gender_keyboard, get_age_keyboard,
+    get_education_keyboard, get_location_keyboard,
+    GenderChoices, AgeChoices, GraduateChoices, SettlementTypeChoices
+)
 
 
 @start_router.message(CommandStart())
-async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None) -> None:
-    """
-    This handler receives messages with `/start` command
-    """
-    if not user.lang:
+async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None):
+    if user.gender is None:
         await message.answer(
-            ("ToshmiOsh telegram botiga xush kelibsiz, <b>{full_name}!</b>\n"
-             "Tilni tanlang\n\n"
-             "Добро пожаловать в бот ToshmiOsh, <b>{full_name}!</b>\n"
-             "Выберите язык"
-             ).format(
-                full_name=message.from_user.full_name),
-            resize_keyboard=True,
-            reply_markup=get_language_keyboards()
+            str(_("1.1. Жинсингизни танланг:")),
+            reply_markup=get_gender_keyboard()
         )
-        await state.set_state(RegistrationStates.choose_language)
-    elif not user.phone:
-        await send_phone_message(message, state, user)
+        await state.set_state(RegisterForm.get_gender)
+    elif user.age is None:
+        await message.answer(str(_("1.2. Ёшингизни танланг:")), reply_markup=get_age_keyboard())
+        await state.set_state(RegisterForm.get_age)
+    elif user.education is None:
+        await message.answer(str(_("1.3. Маълумот даражангизни танланг:")), reply_markup=get_education_keyboard())
+        await state.set_state(RegisterForm.get_education)
+    elif user.location is None:
+        await message.answer(str(_("1.4. Сиз қаерда яшайсиз?")), reply_markup=get_location_keyboard())
+        await state.set_state(RegisterForm.get_location)
     else:
-        with override(user.lang):
-            await send_category_list_message(message, state, user)
+        await get_current_question(message, state, user)
 
 
-@start_router.message(RegistrationStates.choose_language)
-async def language_chosen(message: Message, state: FSMContext, user: TGUser | None):
-    lang = message.text
-    if lang == TG_LANGUAGES[0]: # uzbek
-        user.lang = "uz"
-    elif lang == TG_LANGUAGES[1]:
-        user.lang = "ru"
-    else:
-        return await message.answer(text=str(_("Quyidagi tugmalardan foydalaning👇")))
+@start_router.message(RegisterForm.get_gender)
+async def gender_chosen(message: Message, state: FSMContext, user: TGUser | None):
+    if message.text not in [str(gender.label) for gender in GenderChoices]:
+        return await message.answer(str(_("Қуйидаги тугмалардан фойдаланинг 👇")))
+    user.gender = message.text
     await user.asave()
-    await send_phone_message(message, state, user)
-    await state.set_state(RegistrationStates.get_phone_number)
+    await message.answer(str(_("1.2. Ёшингизни танланг:")), reply_markup=get_age_keyboard())
+    await state.set_state(RegisterForm.get_age)
 
 
-@start_router.message(
-    RegistrationStates.get_phone_number,
-    F.content_type.in_({types.ContentType.CONTACT, types.ContentType.TEXT})
-)
-async def phone_getting(message: Message, state: FSMContext, user: TGUser | None):
-    if message.contact:
-        contact = "+" + message.contact.phone_number
-    else:
-        contact = message.text
-    if uzbekistan_phone_regex.match(contact):
-        user.phone = contact
-        await user.asave()
-        await send_category_list_message(message, state, user)
-        # Сброс состояния
-        await state.clear()
-        await state.set_state(MenuStates.choose_menu)
-    else:
-        await message.answer(str(_("Iltimos faqat O'zbekistonga tegishli raqamni yuboring")))
-        # Сохраняем состояние ожидания
-        await state.set_state(RegistrationStates.get_phone_number)
+@start_router.message(RegisterForm.get_age)
+async def age_chosen(message: Message, state: FSMContext, user: TGUser | None):
+    if message.text not in [str(age.label) for age in AgeChoices]:
+        return await message.answer(str(_("Қуйидаги ёш диапазонларидан бирини танланг 👇")))
+    user.age = message.text
+    await user.asave()
+    await message.answer(str(_("1.3. Маълумот даражангизни танланг:")), reply_markup=get_education_keyboard())
+    await state.set_state(RegisterForm.get_education)
+
+
+@start_router.message(RegisterForm.get_education)
+async def education_chosen(message: Message, state: FSMContext, user: TGUser | None):
+    if message.text not in [str(graduate.label) for graduate in GraduateChoices]:
+        return await message.answer(str(_("Қуйидаги таълим даражасидан бирини танланг 👇")))
+    user.education = message.text
+    await user.asave()
+    await message.answer(str(_("1.4. Сиз қаерда яшайсиз?")), reply_markup=get_location_keyboard())
+    await state.set_state(RegisterForm.get_location)
+
+
+@start_router.message(RegisterForm.get_location)
+async def location_chosen(message: Message, state: FSMContext, user: TGUser | None):
+    if message.text not in [str(settlement.label) for settlement in SettlementTypeChoices]:
+        return await message.answer(str(_("Қуйидагидан бирини танланг 👇")))
+    user.location = message.text
+    await user.asave()
+
+    # await message.answer(
+    #     str(_("Рўйхатдан ўтиш якунланди ✅\n\n"
+    #           "Сиз менюдан фойдаланишингиз мумкин.")),
+    #     reply_markup=types.ReplyKeyboardRemove()
+    # )
+    await state.clear()
+    await get_current_question(message, state, user)

@@ -73,6 +73,7 @@ DJANGO_APPS = [
     "django.contrib.admin",
     "django.forms",
 ]
+
 THIRD_PARTY_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
@@ -87,8 +88,7 @@ LOCAL_APPS = [
     "apps.users",
     # Your stuff: custom apps go here
     "apps.bot",
-    "apps.products",
-    "apps.orders",
+    "apps.polls",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
