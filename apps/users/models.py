@@ -38,10 +38,6 @@ class TGUser(Model):
     id = BigIntegerField(verbose_name=_("ID пользователя"), db_index=True, primary_key=True, unique=True)
     username = CharField(verbose_name=_("Имя пользователя"), null=True, blank=True, max_length=255)
     fullname = CharField(verbose_name=_("Полное имя"), max_length=255)
-    gender = CharField(max_length=10, blank=True, null=True)
-    age = CharField(max_length=20, blank=True, null=True)
-    education = CharField(max_length=50, blank=True, null=True)
-    location = CharField(max_length=20, blank=True, null=True)
     is_active = BooleanField(verbose_name=_("Активен?"), default=True)
 
     class Meta:

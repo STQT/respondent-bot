@@ -51,8 +51,6 @@ class RespondentAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow([
             'Respondent ID',
-            'Gender',
-            'Age',
             'Poll',
             'Question',
             'Selected Choices',
@@ -66,8 +64,6 @@ class RespondentAdmin(admin.ModelAdmin):
                 selected = ", ".join(choice.text for choice in answer.selected_choices.all())
                 writer.writerow([
                     respondent.tg_user.id,
-                    respondent.tg_user.gender,
-                    respondent.tg_user.age,
                     respondent.poll.name,
                     answer.question.text,
                     selected,

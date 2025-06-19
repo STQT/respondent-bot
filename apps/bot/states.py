@@ -8,3 +8,4 @@ class RegisterForm(StatesGroup):
 
 class PollStates(StatesGroup):
     waiting_for_answer = State()
+    waiting_for_custom_answer = State()

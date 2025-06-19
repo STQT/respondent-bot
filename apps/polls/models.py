@@ -76,7 +76,7 @@ class Respondent(models.Model):
         return self.finished_at is not None
 
     def __str__(self):
-        return f"Респондент жинси: {self.tg_user.gender} | Ёши: {self.tg_user.age}"
+        return f"Респондент: {self.tg_user.id} | TG: {self.tg_user.fullname}"
 
     class Meta:
         verbose_name = _("Респондент")

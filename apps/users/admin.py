@@ -34,4 +34,4 @@ class UserAdmin(auth_admin.UserAdmin):
 
 @admin.register(TGUser)
 class TGUserAdmin(admin.ModelAdmin):
-    list_display = ["id", "username", "fullname", "gender", "is_active"]
+    list_display = ["id", "username", "fullname", "is_active"]
