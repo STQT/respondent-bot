@@ -1,9 +1,12 @@
-import csv
-
 from django.contrib import admin
 from django.http import HttpResponse
+from django.template.response import TemplateResponse
+from django.urls import path
+from import_export.admin import ExportMixin
 
+from apps.polls.filters import PollFilterForm
 from apps.polls.models import Poll, Question, Choice, Respondent, Answer
+from apps.polls.resources import RespondentExportResource
 
 
 class ChoiceInline(admin.TabularInline):
@@ -40,41 +43,34 @@ class QuestionAdmin(admin.ModelAdmin):
 class RespondentAdmin(admin.ModelAdmin):
     list_display = ('tg_user', 'poll', 'started_at', 'finished_at')
     list_filter = ('poll', 'finished_at')
-    actions = ['export_respondents_with_answers']
+    change_list_template = "polls/respondents_export_filter.html"  # шаблон для кнопки (см. ниже)
 
-    def export_respondents_with_answers(self, request, queryset):
-        completed = queryset.filter(finished_at__isnull=False)
+    def get_urls(self):
+        urls = super().get_urls()
+        return [
+            path('export-custom/', self.admin_site.admin_view(self.export_custom_view), name='respondent_export_custom')
+        ] + urls
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=completed_respondents.csv'
+    def export_custom_view(self, request):
+        if request.method == "POST":
+            form = PollFilterForm(request.POST)
+            if form.is_valid():
+                poll = form.cleaned_data["poll"]
+                include_unfinished = form.cleaned_data["include_unfinished"]
+                resource = RespondentExportResource(poll=poll, include_unfinished=include_unfinished)
+                dataset = resource.export(resource.get_export_queryset(request))
+                response = HttpResponse(dataset.csv, content_type="text/csv")
+                response["Content-Disposition"] = f'attachment; filename=respondents_poll_{poll.id}.csv'
+                return response
+        else:
+            form = PollFilterForm()
 
-        writer = csv.writer(response)
-        writer.writerow([
-            'Respondent ID',
-            'Poll',
-            'Question',
-            'Selected Choices',
-            'Open Answer',
-            'Started At',
-            'Finished At',
-        ])
-
-        for respondent in completed:
-            for answer in respondent.answers.all():
-                selected = ", ".join(choice.text for choice in answer.selected_choices.all())
-                writer.writerow([
-                    respondent.tg_user.id,
-                    respondent.poll.name,
-                    answer.question.text,
-                    selected,
-                    answer.open_answer,
-                    respondent.started_at,
-                    respondent.finished_at,
-                ])
-
-        return response
-
-    export_respondents_with_answers.short_description = "Экспорт завершённых респондентов с ответами"
+        context = {
+            "opts": self.model._meta,
+            "form": form,
+            "title": "Экспорт респондентов с фильтрами",
+        }
+        return TemplateResponse(request, "polls/respondents_export_form.html", context)
 
 
 @admin.register(Answer)

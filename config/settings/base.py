@@ -72,6 +72,7 @@ DJANGO_APPS = [
     # "django.contrib.humanize", # Handy template tags
     "django.contrib.admin",
     "django.forms",
+    "import_export",
 ]
 
 THIRD_PARTY_APPS = [

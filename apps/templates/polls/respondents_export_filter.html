@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+  <div class="object-tools">
+    <ul>
+      <li>
+        <a href="{% url 'admin:respondent_export_custom' %}">
+          📥 Экспорт с фильтрами
+        </a>
+      </li>
+    </ul>
+  </div>
+{% endblock %}
