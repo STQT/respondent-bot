@@ -1,25 +1,32 @@
+from django.utils import timezone
 from import_export.fields import Field
 from import_export.resources import ModelResource
-from django.utils import timezone
-from apps.polls.models import Respondent, Question
+
+from apps.polls.models import Respondent
 
 
 class RespondentExportResource(ModelResource):
-    tg_user_id = Field(attribute='tg_user__id', column_name='TG ID')
-    fullname = Field(attribute='tg_user__fullname', column_name='ФИО')
-    started_at = Field(attribute='started_at', column_name='Бошланган вақт')
-    finished_at = Field(attribute='finished_at', column_name='Якунланган вақт')
-
     def __init__(self, poll=None, include_unfinished=False):
         super().__init__()
         self._poll = poll
         self._include_unfinished = include_unfinished
+        self._dynamic_fields = []
 
-        # Добавляем динамические поля Q1, Q2, ...
         if self._poll:
             for question in self._poll.questions.all().order_by("order"):
-                col = f"Q{question.order}"
-                self.fields[col] = Field(column_name=col)
+                field_name = f"Q{question.order}"
+                self._dynamic_fields.append((field_name, question.id))
+                self.fields[field_name] = Field(column_name=field_name)
+
+        # ⬇️ Статические поля
+        self.fields['tg_user_id'] = Field(attribute='tg_user_id', column_name='TG ID')
+        self.fields['fullname'] = Field(attribute='fullname', column_name='ФИО')
+        self.fields['started_at'] = Field(attribute='started_at', column_name='Бошланган вақт')
+        self.fields['finished_at'] = Field(attribute='finished_at', column_name='Якунланган вақт')
+        dynamic_fields = [f for f, _ in self._dynamic_fields]
+        self.export_order = [
+                                'tg_user_id', 'fullname', 'started_at', 'finished_at'
+                            ] + dynamic_fields
 
     def get_export_queryset(self, request):
         qs = Respondent.objects.all()
@@ -32,42 +39,56 @@ class RespondentExportResource(ModelResource):
             'answers__question__choices',
             'answers__selected_choices',
             'tg_user',
-            'poll__questions'
         )
 
-    def dehydrate(self, respondent, field):
-        # Обработка ответов Q1, Q2 и т.д.
-        if field.column_name.startswith("Q"):
-            try:
-                order_num = int(field.column_name.replace("Q", ""))
-                question = respondent.poll.questions.filter(order=order_num).first()
-                if not question:
-                    return ""
+    # ✅ Статические поля
+    def dehydrate_tg_user_id(self, respondent):
+        return respondent.tg_user.id
 
-                answer = respondent.answers.filter(question=question).first()
-                if not answer:
-                    return ""
+    def dehydrate_fullname(self, respondent):
+        return respondent.tg_user.fullname
 
-                if answer.open_answer:
-                    return answer.open_answer.strip()
+    def dehydrate_started_at(self, respondent):
+        if respondent.started_at:
+            return respondent.started_at.astimezone(timezone.get_current_timezone()).strftime("%d/%m/%Y %H:%M")
+        return ""
 
+    def dehydrate_finished_at(self, respondent):
+        if respondent.finished_at:
+            return respondent.finished_at.astimezone(timezone.get_current_timezone()).strftime("%d/%m/%Y %H:%M")
+        return ""
+
+    def get_export_fields(self, resource=None):
+        base_fields = [
+            self.fields['tg_user_id'],
+            self.fields['fullname'],
+            self.fields['started_at'],
+            self.fields['finished_at'],
+        ]
+        dynamic_fields = [self.fields[name] for name, _ in self._dynamic_fields]
+        return base_fields + dynamic_fields
+
+    def export_resource(self, respondent, *args, **kwargs):
+        row = {
+            'tg_user_id': self.dehydrate_tg_user_id(respondent),
+            'fullname': self.dehydrate_fullname(respondent),
+            'started_at': self.dehydrate_started_at(respondent),
+            'finished_at': self.dehydrate_finished_at(respondent),
+        }
+
+        # Заполняем ответы по каждому динамическому вопросу
+        answers_map = {a.question_id: a for a in respondent.answers.all()}
+        for field_name, question_id in self._dynamic_fields:
+            answer = answers_map.get(question_id)
+            if not answer:
+                row[field_name] = ""
+            elif answer.open_answer:
+                row[field_name] = answer.open_answer.strip()
+            else:
                 selected = answer.selected_choices.all().order_by("order")
-                return ", ".join(str(choice.order) for choice in selected)
+                row[field_name] = ", ".join(str(c.order) for c in selected)
 
-            except Exception:
-                return ""
-
-        # Обработка стандартных полей
-        elif field.column_name == 'Бошланган вақт':
-            if respondent.started_at:
-                return respondent.started_at.astimezone(timezone.get_current_timezone()).strftime("%d/%m/%Y %H:%M")
-        elif field.column_name == 'Якунланган вақт':
-            if respondent.finished_at:
-                return respondent.finished_at.astimezone(timezone.get_current_timezone()).strftime("%d/%m/%Y %H:%M")
-
-        return super().dehydrate(respondent, field)
+        return row
 
     class Meta:
         model = Respondent
-        fields = ['tg_user_id', 'fullname', 'started_at', 'finished_at']
-        export_order = ['tg_user_id', 'fullname', 'started_at', 'finished_at']

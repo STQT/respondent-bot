@@ -60,7 +60,7 @@ class Choice(models.Model):
         ordering = ['order']
 
     def __str__(self):
-        return self.text
+        return f"{self.order}. {self.text}"
 
     class Meta:
         verbose_name = _("Выбор")

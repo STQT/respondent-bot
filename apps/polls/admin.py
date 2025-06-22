@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path
 from import_export.admin import ExportMixin
+from tablib import Dataset  # в начало файла
 
 from apps.polls.filters import PollFilterForm
 from apps.polls.models import Poll, Question, Choice, Respondent, Answer
@@ -58,9 +59,19 @@ class RespondentAdmin(admin.ModelAdmin):
                 poll = form.cleaned_data["poll"]
                 include_unfinished = form.cleaned_data["include_unfinished"]
                 resource = RespondentExportResource(poll=poll, include_unfinished=include_unfinished)
+
+                queryset = resource.get_export_queryset(request)
+                export_fields = resource.get_export_fields()
+
+                dataset = Dataset(headers=[f.column_name for f in export_fields])
+                for respondent in queryset:
+                    row = resource.export_resource(respondent)
+                    dataset.append([row.get(f.attribute or f.column_name, "") for f in export_fields])
+
                 dataset = resource.export(resource.get_export_queryset(request))
-                response = HttpResponse(dataset.csv, content_type="text/csv")
-                response["Content-Disposition"] = f'attachment; filename=respondents_poll_{poll.id}.csv'
+                response = HttpResponse(dataset.xlsx,
+                                        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                response["Content-Disposition"] = f'attachment; filename=respondents_poll_{poll.id}.xlsx'
                 return response
         else:
             form = PollFilterForm()
