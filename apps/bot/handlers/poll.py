@@ -32,24 +32,41 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
     answer_text = message.text.strip()
 
     # 🔙 Обработка кнопки "Назад"
-    if answer_text == BACK_STR and len(previous_questions) >= 1:
-        previous_question_id = previous_questions.pop()
+    if answer_text == BACK_STR:
+        current_poll = await sync_to_async(lambda: respondent.poll)()
+        current_question = await Question.objects.aget(id=question_id)
+        current_order = current_question.order
 
-        respondent.history = previous_questions
+        if current_order == 1:
+            await message.answer(str(_("Бу биринчи савол. Орқага қайтиш мумкин эмас.")))
+            return
+
+        # Получаем предыдущий вопрос по order
+        previous_question = await Question.objects.filter(
+            poll=current_poll,
+            order__lt=current_order
+        ).order_by('-order').afirst()
+
+        if not previous_question:
+            await message.answer(str(_("Аввалги савол топилмади.")))
+            return
+
+        # Обновим history и удалим текущий ответ
+        respondent.history = respondent.history[:-1]
         await respondent.asave()
+        await Answer.objects.filter(respondent=respondent, question_id=question_id).adelete()
 
         await state.update_data(
-            question_id=previous_question_id,
-            previous_questions=previous_questions
+            question_id=previous_question.id,
+            previous_questions=respondent.history
         )
 
-        await Answer.objects.filter(respondent=respondent, question_id=question_id).adelete()
         await get_next_question(
             message=message,
             state=state,
-            previous_questions=previous_questions,
+            previous_questions=respondent.history,
             respondent=respondent,
-            question_id=previous_question_id
+            question_id=previous_question.id
         )
         await state.set_state(PollStates.waiting_for_answer)
         return
@@ -93,7 +110,8 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
             if cid and cid in current_selected:
                 current_selected.remove(cid)
                 await state.update_data(selected_choices=list(current_selected))
-            await show_multiselect_question(message, choice_map, current_selected)
+            show_back_button = question.order != 1
+            await show_multiselect_question(message, choice_map, current_selected, show_back_button=show_back_button)
             return
         cid = choice_map.get(answer_text)
         if not cid:
@@ -107,7 +125,8 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
             return
         current_selected.add(cid)
         await state.update_data(selected_choices=list(current_selected))
-        await show_multiselect_question(message, choice_map, current_selected)
+        show_back_button = question.order != 1
+        await show_multiselect_question(message, choice_map, current_selected, show_back_button=show_back_button)
         return
     else:
         await message.answer(str(_("Бу турдаги савол ҳозирча қўллаб-қувватланмайди.")))

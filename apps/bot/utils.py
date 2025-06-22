@@ -43,6 +43,11 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
     answered_ids = Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
     next_question = await all_questions.exclude(id__in=answered_ids).afirst()
 
+    if next_question and next_question.order == 1:
+        show_back_button = False
+    else:
+        show_back_button = True
+
     if not next_question:
         respondent.finished_at = timezone.now()
         await respondent.asave()
@@ -79,7 +84,7 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
 
     if next_question.type in [Question.QuestionTypeChoices.CLOSED_SINGLE, Question.QuestionTypeChoices.CLOSED_MULTIPLE,
                               Question.QuestionTypeChoices.MIXED]:
-        markup = get_keyboards_markup(next_question, choices)
+        markup = get_keyboards_markup(next_question, choices, show_back_button=show_back_button)
         msg_text += "\n" + str(_("Жавобни танланг (номер билан) 👇"))
         await message.answer(msg_text, reply_markup=markup)
     else:
@@ -144,7 +149,7 @@ async def get_current_question(message: Message, state: FSMContext, user: TGUser
     await state.set_state(PollStates.waiting_for_answer)
 
 
-async def show_multiselect_question(message, choice_map, selected_choices):
+async def show_multiselect_question(message, choice_map, selected_choices, show_back_button=True):
     msg_text = _("Танланган жавоблар ✅ билан белгиланган:\n\n")
     display_choices = []
 
@@ -153,33 +158,32 @@ async def show_multiselect_question(message, choice_map, selected_choices):
         marker = "✅ " if cid in selected_choices else ""
         text = f"{marker}{num}. {choice.text}"
         msg_text += text + "\n"
-        display_choices.append((num, marker))  # (номер, ✅ или "")
+        display_choices.append((num, marker))
 
-    # Генерация кнопок с учетом разметки
     number_buttons = [types.KeyboardButton(text=f"{marker}{num}".strip()) for num, marker in display_choices]
     keyboard = [number_buttons[i:i + 6] for i in range(0, len(number_buttons), 6)]
 
-    # Добавляем кнопку "Кейинги савол"
-    bottom_buttons = [
-        types.KeyboardButton(text=NEXT_STR),
-        types.KeyboardButton(text=BACK_STR), ]
+    bottom_buttons = [types.KeyboardButton(text=NEXT_STR)]
+    if show_back_button:
+        bottom_buttons.append(types.KeyboardButton(text=BACK_STR))
     keyboard.append(bottom_buttons)
 
     markup = types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
     await message.answer(msg_text, reply_markup=markup)
 
 
-def get_keyboards_markup(next_question, choices):
-    # Создаём кнопки по номерам
+
+def get_keyboards_markup(next_question, choices, show_back_button=True):
     number_buttons = [types.KeyboardButton(text=str(i)) for i in range(1, len(choices) + 1)]
-    # Разбиваем кнопки по 6 в строке
     keyboard = [number_buttons[i:i + 6] for i in range(0, len(number_buttons), 6)]
-    # Кнопки снизу (например: "Бошқа жавоб" и "Назад")
+
     bottom_buttons = []
     if next_question.type == Question.QuestionTypeChoices.MIXED:
         bottom_buttons.append(types.KeyboardButton(text=ANOTHER_STR))
-    bottom_buttons.append(types.KeyboardButton(text=BACK_STR))
+    if show_back_button:
+        bottom_buttons.append(types.KeyboardButton(text=BACK_STR))
 
-    keyboard.append(bottom_buttons)  # Добавляем в конец
+    if bottom_buttons:
+        keyboard.append(bottom_buttons)
 
     return types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
