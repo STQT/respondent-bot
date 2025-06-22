@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 from django.db.models import TextChoices
+from django.contrib.postgres.fields import ArrayField
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -71,6 +72,7 @@ class Respondent(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name='respondents')
     started_at = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+    history = ArrayField(models.IntegerField(), default=list, blank=True)
 
     def is_completed(self):
         return self.finished_at is not None
