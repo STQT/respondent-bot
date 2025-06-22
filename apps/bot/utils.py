@@ -39,9 +39,13 @@ async def async_get_or_create_user(defaults=None, **kwargs):
 
 
 async def get_next_question(message: Message, state: FSMContext, previous_questions, respondent, question_id):
+    print(f"📥 get_next_question() called with question_id={question_id}, previous_questions={previous_questions}")
+
     all_questions = await sync_to_async(lambda: respondent.poll.questions.all())()
     answered_ids = Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
     next_question = await all_questions.exclude(id__in=answered_ids).afirst()
+
+    print(f"🔎 Next question: {next_question.id if next_question else 'None'}")
 
     if next_question and next_question.order == 1:
         show_back_button = False
@@ -49,6 +53,7 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
         show_back_button = True
 
     if not next_question:
+        print("✅ All questions completed.")
         respondent.finished_at = timezone.now()
         await respondent.asave()
         await message.answer(str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
@@ -56,12 +61,13 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
         return
 
     updated_history = previous_questions + [question_id]
+    print(f"📜 Updated history: {updated_history}")
 
-    # 🧠 Сохраняем историю в БД
     respondent.history = updated_history
     await respondent.asave()
 
     await state.update_data(question_id=next_question.id, previous_questions=updated_history)
+    print(f"💾 State updated with question_id={next_question.id}")
 
     total_questions = await sync_to_async(lambda: respondent.poll.questions.count())()
     current_index = total_questions - await all_questions.exclude(id__in=answered_ids).acount() + 1
@@ -76,14 +82,18 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
 
     choices = await sync_to_async(list)(next_question.choices.all().order_by("order"))
     choice_map = {str(idx): choice.id for idx, choice in enumerate(choices, start=1)}
+    print(f"📋 Choices: {choice_map}")
 
     for idx, choice in enumerate(choices, start=1):
         msg_text += f"{idx}. {choice.text}\n"
 
     await state.update_data(choice_map=choice_map)
 
-    if next_question.type in [Question.QuestionTypeChoices.CLOSED_SINGLE, Question.QuestionTypeChoices.CLOSED_MULTIPLE,
-                              Question.QuestionTypeChoices.MIXED]:
+    if next_question.type in [
+        Question.QuestionTypeChoices.CLOSED_SINGLE,
+        Question.QuestionTypeChoices.CLOSED_MULTIPLE,
+        Question.QuestionTypeChoices.MIXED
+    ]:
         markup = get_keyboards_markup(next_question, choices, show_back_button=show_back_button)
         msg_text += "\n" + str(_("Жавобни танланг (номер билан) 👇"))
         await message.answer(msg_text, reply_markup=markup)
@@ -93,13 +103,14 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
 
 
 async def get_current_question(message: Message, state: FSMContext, user: TGUser):
-    # Проверяем активные опросы
+    print(f"🚦 get_current_question() called for user {user.id}")
+
     active_polls = Poll.objects.filter(deadline__gte=timezone.now())
     if not await active_polls.aexists():
+        print("❌ No active polls")
         await message.answer(str(_("Ҳозирча актив сўровномалар мавжуд эмас.")))
         return
 
-    # Фильтруем уже пройденные опросы
     completed_respondents = Respondent.objects.filter(
         tg_user=user,
         poll=OuterRef('pk'),
@@ -110,13 +121,13 @@ async def get_current_question(message: Message, state: FSMContext, user: TGUser
     ).filter(has_completed=False)
 
     if not await available_polls.aexists():
+        print("🔒 No available polls for user")
         await message.answer(
             str(_("Ҳозирча сиз учун янги сўровномалар мавжуд эмас.")),
             reply_markup=ReplyKeyboardRemove()
         )
         return
 
-    # Ищем незавершённый опрос
     respondent = await Respondent.objects.filter(
         tg_user=user, poll__in=active_polls, finished_at__isnull=True
     ).afirst()
@@ -124,25 +135,28 @@ async def get_current_question(message: Message, state: FSMContext, user: TGUser
     if not respondent:
         poll = await available_polls.afirst()
         respondent = await Respondent.objects.acreate(tg_user=user, poll=poll)
+        print(f"🆕 New respondent created: {respondent.id}")
+    else:
+        print(f"👤 Existing respondent: {respondent.id}")
 
-    # Получаем список вопросов и ответов
     poll = await sync_to_async(lambda: respondent.poll)()
     questions = await sync_to_async(lambda: poll.questions.all())()
     answered_ids = Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
     next_question = await questions.exclude(id__in=answered_ids).afirst()
 
     if not next_question:
+        print("📭 No next question — poll complete")
         respondent.finished_at = timezone.now()
         await respondent.asave()
         await message.answer(str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
         return
 
-    # Вызов основной функции отрисовки вопроса
+    print(f"➡️ Starting at question_id={next_question.id}")
     await state.update_data(respondent_id=respondent.id)
     await get_next_question(
         message=message,
         state=state,
-        previous_questions=[],  # стартовая история
+        previous_questions=[],
         respondent=respondent,
         question_id=next_question.id
     )
@@ -150,6 +164,8 @@ async def get_current_question(message: Message, state: FSMContext, user: TGUser
 
 
 async def show_multiselect_question(message, choice_map, selected_choices, show_back_button=True):
+    print(f"🧩 show_multiselect_question with selected: {selected_choices}, show_back_button={show_back_button}")
+
     msg_text = _("Танланган жавоблар ✅ билан белгиланган:\n\n")
     display_choices = []
 
@@ -168,12 +184,15 @@ async def show_multiselect_question(message, choice_map, selected_choices, show_
         bottom_buttons.append(types.KeyboardButton(text=BACK_STR))
     keyboard.append(bottom_buttons)
 
+    print(f"⌨️ Generated keyboard with {len(number_buttons)} buttons")
     markup = types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
     await message.answer(msg_text, reply_markup=markup)
 
 
-
 def get_keyboards_markup(next_question, choices, show_back_button=True):
+    print(
+        f"🛠 get_keyboards_markup: question={next_question.id}, type={next_question.type}, show_back_button={show_back_button}")
+
     number_buttons = [types.KeyboardButton(text=str(i)) for i in range(1, len(choices) + 1)]
     keyboard = [number_buttons[i:i + 6] for i in range(0, len(number_buttons), 6)]
 

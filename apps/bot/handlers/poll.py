@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
 from apps.bot.utils import get_current_question, BACK_STR, ANOTHER_STR, get_next_question, show_multiselect_question, \
-    NEXT_STR
+    NEXT_STR, get_keyboards_markup
 from apps.polls.models import Respondent, Answer, Question, Choice
 from apps.users.models import TGUser
 
@@ -28,7 +28,6 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
 
     respondent = await Respondent.objects.aget(id=respondent_id)
     previous_questions = list(respondent.history or [])
-
     answer_text = message.text.strip()
 
     # 🔙 Обработка кнопки "Назад"
@@ -41,7 +40,6 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
             await message.answer(str(_("Бу биринчи савол. Орқага қайтиш мумкин эмас.")))
             return
 
-        # Получаем предыдущий вопрос по order
         previous_question = await Question.objects.filter(
             poll=current_poll,
             order__lt=current_order
@@ -51,23 +49,17 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
             await message.answer(str(_("Аввалги савол топилмади.")))
             return
 
-        # Обновим history и удалим текущий ответ
         respondent.history = respondent.history[:-1]
         await respondent.asave()
         await Answer.objects.filter(respondent=respondent, question_id=question_id).adelete()
 
         await state.update_data(
             question_id=previous_question.id,
-            previous_questions=respondent.history
+            previous_questions=respondent.history,
+            selected_choices=[]  # ⬅️ очищаем список выбранных ответов
         )
 
-        await get_next_question(
-            message=message,
-            state=state,
-            previous_questions=respondent.history,
-            respondent=respondent,
-            question_id=previous_question.id
-        )
+        await render_question(message, state, respondent, previous_question, respondent.history)
         await state.set_state(PollStates.waiting_for_answer)
         return
 
@@ -100,7 +92,7 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
                 return
             selected_objs = [await Choice.objects.aget(id=cid) for cid in current_selected]
             await sync_to_async(answer.selected_choices.add)(*selected_objs)
-            await state.update_data(selected_choices=[])  # очистить
+            await state.update_data(selected_choices=[])
             await get_next_question(message, state, previous_questions, respondent, question_id)
             await state.set_state(PollStates.waiting_for_answer)
             return
@@ -131,5 +123,31 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
     else:
         await message.answer(str(_("Бу турдаги савол ҳозирча қўллаб-қувватланмайди.")))
         return
+
     await get_next_question(message, state, previous_questions, respondent, question_id)
     await state.set_state(PollStates.waiting_for_answer)
+
+
+async def render_question(message: Message, state: FSMContext, respondent: Respondent, question: Question,
+                          previous_questions: list):
+    show_back_button = question.order != 1
+
+    await state.update_data(question_id=question.id, previous_questions=previous_questions)
+
+    choices = await sync_to_async(list)(question.choices.all().order_by("order"))
+    choice_map = {str(idx): choice.id for idx, choice in enumerate(choices, start=1)}
+
+    msg_text = f"{_('Савол: ')} {question.text}\n\n"
+    for idx, choice in enumerate(choices, start=1):
+        msg_text += f"{idx}. {choice.text}\n"
+
+    await state.update_data(choice_map=choice_map)
+
+    if question.type in [Question.QuestionTypeChoices.CLOSED_SINGLE, Question.QuestionTypeChoices.CLOSED_MULTIPLE,
+                         Question.QuestionTypeChoices.MIXED]:
+        markup = get_keyboards_markup(question, choices, show_back_button=show_back_button)
+        msg_text += "\n" + str(_("Жавобни танланг (номер билан) 👇"))
+        await message.answer(msg_text, reply_markup=markup)
+    else:
+        await message.answer(msg_text + "\n" + str(_("Жавобингизни ёзинг ✍️")),
+                             reply_markup=types.ReplyKeyboardRemove())
