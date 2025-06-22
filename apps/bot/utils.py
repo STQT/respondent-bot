@@ -9,11 +9,12 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
-from apps.polls.models import Poll, Respondent, Answer, Question
+from apps.polls.models import Poll, Respondent, Answer, Question, Choice
 from apps.users.models import TGUser
 
 ANOTHER_STR = str(_("📝 Бошқа"))
 BACK_STR = str(_("🔙 Ортга"))
+NEXT_STR = str(_("➡️ Кейинги савол"))
 
 
 async def async_get_or_create_user(defaults=None, **kwargs):
@@ -141,6 +142,31 @@ async def get_current_question(message: Message, state: FSMContext, user: TGUser
         question_id=next_question.id
     )
     await state.set_state(PollStates.waiting_for_answer)
+
+
+async def show_multiselect_question(message, choice_map, selected_choices):
+    msg_text = _("Танланган жавоблар ✅ билан белгиланган:\n\n")
+    display_choices = []
+
+    for num, cid in choice_map.items():
+        choice = await Choice.objects.aget(id=cid)
+        marker = "✅ " if cid in selected_choices else ""
+        text = f"{marker}{num}. {choice.text}"
+        msg_text += text + "\n"
+        display_choices.append((num, marker))  # (номер, ✅ или "")
+
+    # Генерация кнопок с учетом разметки
+    number_buttons = [types.KeyboardButton(text=f"{marker}{num}".strip()) for num, marker in display_choices]
+    keyboard = [number_buttons[i:i + 6] for i in range(0, len(number_buttons), 6)]
+
+    # Добавляем кнопку "Кейинги савол"
+    bottom_buttons = [
+        types.KeyboardButton(text=NEXT_STR),
+        types.KeyboardButton(text=BACK_STR), ]
+    keyboard.append(bottom_buttons)
+
+    markup = types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+    await message.answer(msg_text, reply_markup=markup)
 
 
 def get_keyboards_markup(next_question, choices):
