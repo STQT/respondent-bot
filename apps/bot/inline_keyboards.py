@@ -48,8 +48,8 @@ def get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_butt
 
 def render_question_inline_text(question, choices):
     msg_text = f"{str(_('Савол: '))} {question.text}\n\n"
-    for idx, choice in enumerate(choices, start=1):
-        msg_text += f"{idx}. {choice.text}\n"
+    for choice in choices:
+        msg_text += f"{choice.order}. {choice.text}\n"
     msg_text += "\n" + str(_("Жавобни танланг 👇"))
     return msg_text
 
