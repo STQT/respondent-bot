@@ -3,7 +3,9 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path
 from import_export.admin import ExportMixin
-from tablib import Dataset  # в начало файла
+from tablib import Dataset
+from markdownx.admin import MarkdownxModelAdmin
+
 
 from apps.polls.filters import PollFilterForm
 from apps.polls.models import Poll, Question, Choice, Respondent, Answer
@@ -22,7 +24,7 @@ class QuestionInline(admin.StackedInline):
 
 
 @admin.register(Poll)
-class PollAdmin(admin.ModelAdmin):
+class PollAdmin(MarkdownxModelAdmin):
     list_display = ('name', 'uuid', 'deadline', 'is_active_status')
     inlines = [QuestionInline]
 

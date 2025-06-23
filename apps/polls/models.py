@@ -5,6 +5,7 @@ from django.db.models import TextChoices
 from django.contrib.postgres.fields import ArrayField
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from markdownx.models import MarkdownxField
 
 from apps.users.models import TGUser
 
@@ -12,7 +13,7 @@ from apps.users.models import TGUser
 class Poll(models.Model):
     name = models.CharField(max_length=255)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    description = models.TextField(blank=True)
+    description = MarkdownxField()
     deadline = models.DateTimeField()
 
     def is_active(self):

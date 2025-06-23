@@ -36,7 +36,7 @@ def register_all_misc() -> (Dispatcher, Bot):
     )
     dp.include_routers(*routers)
     # Initialize Bot instance with default bot properties which will be passed to all API calls
-    bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2))
     return dp, bot
 
 
