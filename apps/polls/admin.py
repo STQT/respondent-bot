@@ -58,8 +58,9 @@ class RespondentAdmin(admin.ModelAdmin):
             if form.is_valid():
                 poll = form.cleaned_data["poll"]
                 include_unfinished = form.cleaned_data["include_unfinished"]
-                resource = RespondentExportResource(poll=poll, include_unfinished=include_unfinished)
+                print(f"📝 Export request received for poll: {poll.id}, include_unfinished={include_unfinished}")
 
+                resource = RespondentExportResource(poll=poll, include_unfinished=include_unfinished)
                 queryset = resource.get_export_queryset(request)
                 export_fields = resource.get_export_fields()
 
@@ -68,11 +69,16 @@ class RespondentAdmin(admin.ModelAdmin):
                     row = resource.export_resource(respondent)
                     dataset.append([row.get(f.attribute or f.column_name, "") for f in export_fields])
 
-                dataset = resource.export(resource.get_export_queryset(request))
-                response = HttpResponse(dataset.xlsx,
-                                        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                response["Content-Disposition"] = f'attachment; filename=respondents_poll_{poll.id}.xlsx'
-                return response
+                print(f"✅ Exported {len(dataset)} rows with {len(export_fields)} fields")
+
+                try:
+                    response = HttpResponse(dataset.xlsx,
+                                            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    response["Content-Disposition"] = f'attachment; filename=respondents_poll_{poll.id}.xlsx'
+                    return response
+                except Exception as e:
+                    print("❌ XLSX export error:", e)
+                    raise
         else:
             form = PollFilterForm()
 
