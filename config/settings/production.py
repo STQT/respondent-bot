@@ -177,13 +177,12 @@ sentry_sdk.init(
 # -------------------------------------------------------------------------------
 # Tools that generate code samples can use SERVERS to point to the correct domain
 SPECTACULAR_SETTINGS["SERVERS"] = [
-    {"url": "https://toshmi.leetcode.uz", "description": "Production server"},
+    {"url": "https://savollar.leetcode.uz", "description": "Production server"},
 ]
 # Your stuff...
 # ------------------------------------------------------------------------------
-WEBHOOK_URL = env("WEBHOOK_URL")
 CSRF_TRUSTED_ORIGINS = [
-    "https://toshmibot.leetcode.uz"
+    "https://savollar.leetcode.uz"
 ]
 STATIC_URL = "/static/"
 STATIC_ROOT = "/app/staticfiles"
