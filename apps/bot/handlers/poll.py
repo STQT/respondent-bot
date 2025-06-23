@@ -30,10 +30,14 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
     previous_questions = list(respondent.history or [])
     answer_text = message.text.strip()
 
+    current_question = await Question.objects.select_related("poll").aget(id=question_id)
+    show_back_button = current_question.order != 1
+    if show_back_button is False:
+        await message.answer(current_question.poll.description)
+
     # 🔙 Обработка кнопки "Назад"
     if answer_text == BACK_STR:
         current_poll = await sync_to_async(lambda: respondent.poll)()
-        current_question = await Question.objects.aget(id=question_id)
         current_order = current_question.order
 
         if current_order == 1:
@@ -43,7 +47,7 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
         previous_question = await Question.objects.filter(
             poll=current_poll,
             order__lt=current_order
-        ).order_by('-order').afirst()
+        ).select_related("poll").order_by('-order').afirst()
 
         if not previous_question:
             await message.answer(str(_("Аввалги савол топилмади.")))
@@ -59,19 +63,18 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
             selected_choices=[]  # ⬅️ очищаем список выбранных ответов
         )
 
-        await render_question(message, state, respondent, previous_question, respondent.history)
+        await render_question(message, state, previous_question, respondent.history)
         await state.set_state(PollStates.waiting_for_answer)
         return
 
-    question = await Question.objects.aget(id=question_id)
-    await Answer.objects.filter(respondent=respondent, question=question).adelete()
-    answer = await Answer.objects.acreate(respondent=respondent, question=question)
+    await Answer.objects.filter(respondent=respondent, question=current_question).adelete()
+    answer = await Answer.objects.acreate(respondent=respondent, question=current_question)
 
-    if question.type == Question.QuestionTypeChoices.OPEN:
+    if current_question.type == Question.QuestionTypeChoices.OPEN:
         answer.open_answer = answer_text
         await answer.asave()
 
-    elif question.type in [Question.QuestionTypeChoices.CLOSED_SINGLE, Question.QuestionTypeChoices.MIXED]:
+    elif current_question.type in [Question.QuestionTypeChoices.CLOSED_SINGLE, Question.QuestionTypeChoices.MIXED]:
         if answer_text == ANOTHER_STR:
             await state.set_state(PollStates.waiting_for_answer)
             await message.answer(str(_("Илтимос, ўз жавобингизни матн сифатида юборинг ✍️")),
@@ -84,7 +87,7 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
         choice = await Choice.objects.aget(id=choice_id)
         await sync_to_async(answer.selected_choices.add)(choice)
 
-    elif question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE:
+    elif current_question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE:
         current_selected = set(data.get("selected_choices", []))
         if answer_text == NEXT_STR:
             if not current_selected:
@@ -102,14 +105,15 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
             if cid and cid in current_selected:
                 current_selected.remove(cid)
                 await state.update_data(selected_choices=list(current_selected))
-            show_back_button = question.order != 1
-            await show_multiselect_question(message, choice_map, current_selected, show_back_button=show_back_button)
+            await show_multiselect_question(message, choice_map, current_selected,
+                                            question_text=current_question.text,
+                                            show_back_button=show_back_button)
             return
         cid = choice_map.get(answer_text)
         if not cid:
             await message.answer(str(_(f'"{answer_text}" — нотўғри рақам. Илтимос, берилган рақамлардан танланг.')))
             return
-        max_select = getattr(question, "max_choices", 3)
+        max_select = getattr(current_question, "max_choices", 3)
         if len(current_selected) >= max_select and cid not in current_selected:
             await message.answer(
                 str(_("Кўп жавоб белгиланди. Илтимос, ортиқча танловни олиб ташланг ёки давом этинг."))
@@ -117,8 +121,10 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
             return
         current_selected.add(cid)
         await state.update_data(selected_choices=list(current_selected))
-        show_back_button = question.order != 1
-        await show_multiselect_question(message, choice_map, current_selected, show_back_button=show_back_button)
+
+        await show_multiselect_question(message, choice_map, current_selected,
+                                        question_text=current_question.text,
+                                        show_back_button=show_back_button)
         return
     else:
         await message.answer(str(_("Бу турдаги савол ҳозирча қўллаб-қувватланмайди.")))
@@ -128,9 +134,11 @@ async def process_answer(message: Message, state: FSMContext, user: TGUser):
     await state.set_state(PollStates.waiting_for_answer)
 
 
-async def render_question(message: Message, state: FSMContext, respondent: Respondent, question: Question,
+async def render_question(message: Message, state: FSMContext, question: Question,
                           previous_questions: list):
     show_back_button = question.order != 1
+    if show_back_button is False:
+        await message.answer(str(_(question.poll.description)))
 
     await state.update_data(question_id=question.id, previous_questions=previous_questions)
 

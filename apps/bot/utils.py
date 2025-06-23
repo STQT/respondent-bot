@@ -52,6 +52,9 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
     else:
         show_back_button = True
 
+    if show_back_button is False:
+        await message.answer(next_question.poll.description)
+
     if not next_question:
         print("✅ All questions completed.")
         respondent.finished_at = timezone.now()
@@ -163,10 +166,11 @@ async def get_current_question(message: Message, state: FSMContext, user: TGUser
     await state.set_state(PollStates.waiting_for_answer)
 
 
-async def show_multiselect_question(message, choice_map, selected_choices, show_back_button=True):
+async def show_multiselect_question(message, choice_map, selected_choices,
+                                    question_text="Номалум савол", show_back_button=True):
     print(f"🧩 show_multiselect_question with selected: {selected_choices}, show_back_button={show_back_button}")
-
-    msg_text = _("Танланган жавоблар ✅ билан белгиланган:\n\n")
+    question_text = str(_("Савол: ")) + question_text + "\n\n"
+    msg_text = question_text + str(_("Танланган жавоблар ✅ билан белгиланган:\n\n"))
     display_choices = []
 
     for num, cid in choice_map.items():
