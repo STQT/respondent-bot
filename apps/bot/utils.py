@@ -62,7 +62,8 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
 
     await state.update_data(
         question_id=next_question.id,
-        previous_questions=updated_history
+        previous_questions=updated_history,
+        selected_id=None
     )
 
     await render_question(message, state, next_question, updated_history)
@@ -79,32 +80,48 @@ async def render_question(message: Message, state: FSMContext, question: Questio
     choices = await sync_to_async(list)(question.choices.all().order_by("order"))
     choice_map = {str(idx): choice.id for idx, choice in enumerate(choices, start=1)}
     await state.update_data(choice_map=choice_map)
+    state_data = await state.get_data()
 
     if question.type in [
         Question.QuestionTypeChoices.CLOSED_SINGLE,
         Question.QuestionTypeChoices.MIXED
     ]:
-        msg_text = render_question_inline_text(question, choices)
-        markup = get_inline_keyboards_markup(question, choices, show_back_button)
-        await message.answer(msg_text, reply_markup=markup)
+        selected_id = state_data.get("selected_id")
+        if selected_id:
+            msg_text = render_selected_single_answer_text(question, choices, selected_id)
+            # 🧾 Отметка выбора — редактируем старое сообщение
+            try:
+                await message.edit_text(msg_text)
+            except:
+                pass  # если не редактируется — пропускаем
+            # 📩 Новый вопрос — отправляем как новое сообщение
+            msg_text = render_question_inline_text(question, choices)
+            markup = get_inline_keyboards_markup(question, choices, show_back_button)
+            await message.answer(msg_text, reply_markup=markup)
+            return
+        else:
+            msg_text = render_question_inline_text(question, choices)
+            markup = get_inline_keyboards_markup(question, choices, show_back_button)
+            await message.answer(msg_text, reply_markup=markup)
     elif question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE:
         selected_choices = []
         await state.update_data(selected_choices=selected_choices)
-        msg_text = render_multiselect_inline_text(question.text, choice_map, selected_choices)
+        msg_text = await render_multiselect_inline_text(question.text, choice_map, selected_choices)
         markup = get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_button)
         await message.answer(msg_text, reply_markup=markup)
     else:
         await message.answer(
             str(question.text) + "\n\n" +
             str(_("Жавобингизни ёзинг ✍️")
-                ), reply_markup=ReplyKeyboardRemove())
+                ),
+            reply_markup=ReplyKeyboardRemove())
 
 
-async def show_multiselect_question(message, choice_map, selected_choices, question_text="Номалум савол",
+async def show_multiselect_question(message: Message, choice_map, selected_choices, question_text="Номалум савол",
                                     show_back_button=True):
-    msg_text = render_multiselect_inline_text(question_text, choice_map, selected_choices)
+    msg_text = await render_multiselect_inline_text(question_text, choice_map, selected_choices)
     markup = get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_button)
-    await message.answer(msg_text, reply_markup=markup)
+    await message.edit_text(msg_text, reply_markup=markup)
 
 
 async def get_current_question(message: Message, state: FSMContext, user):
@@ -153,6 +170,7 @@ async def get_current_question(message: Message, state: FSMContext, user):
         print("📭 No next question — poll complete")
         respondent.finished_at = timezone.now()
         await respondent.asave()
+        print(message, "FIVE")
         await message.answer(str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
         return
 
@@ -166,3 +184,10 @@ async def get_current_question(message: Message, state: FSMContext, user):
         question_id=next_question.id
     )
     await state.set_state(PollStates.waiting_for_answer)
+
+def render_selected_single_answer_text(question, choices, selected_id):
+    msg_text = f"{str(_('Савол:'))} {question.text}\n\n"
+    for choice in choices:
+        marker = "✅ " if choice.id == selected_id else ""
+        msg_text += f"{marker}{choice.order}. {choice.text}\n"
+    return msg_text

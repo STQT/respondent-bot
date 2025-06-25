@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -16,6 +16,6 @@ async def echo_handler(message: Message, state: FSMContext, user: TGUser | None)
     Handler will forward receive a message back to the sender
     By default, message handler will handle all message types (like a text, photo, sticker etc.)
     """
+    await message.answer("Salom", reply_markup=types.ReplyKeyboardRemove())
     # with override(user.lang):
     # await get_current_question(message, state, user)
-    await message.answer("HELLO")

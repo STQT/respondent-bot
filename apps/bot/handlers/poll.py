@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
 from apps.bot.utils import get_next_question, render_question, show_multiselect_question
+from apps.bot.inline_keyboards import render_selected_single_answer_text
 from apps.polls.models import Respondent, Answer, Question, Choice
 from apps.users.models import TGUser
 
@@ -41,19 +42,19 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
             previous_questions=respondent.history,
             selected_choices=[]
         )
+        await callback_query.answer()
+        await callback_query.message.edit_reply_markup(reply_markup=None)
         await render_question(callback_query.message, state, prev_q, respondent.history)
         await state.set_state(PollStates.waiting_for_answer)
-        await callback_query.answer()
-        # await callback_query.message.edit_reply_markup(reply_markup=None)
-        await callback_query.message.delete()
+        # await callback_query.message.delete()
         return
 
     if cb_data == "custom_input":
         await state.set_state(PollStates.waiting_for_answer)
         await callback_query.message.answer(str(_("Илтимос, ўз жавобингизни матн сифатида юборинг ✍️")))
         await callback_query.answer()
-        # await callback_query.message.edit_reply_markup(reply_markup=None)
-        await callback_query.message.delete()
+        await callback_query.message.edit_reply_markup(reply_markup=None)
+        # await callback_query.message.delete()
         return
 
     if cb_data.startswith("choice:"):
@@ -62,11 +63,19 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         answer = await Answer.objects.acreate(respondent=respondent, question=current_question)
         choice = await Choice.objects.aget(id=choice_id)
         await sync_to_async(answer.selected_choices.add)(choice)
+
+        # Обновляем состояние, чтобы отрисовать с отметкой ✅
+        await state.update_data(selected_id=choice.id)
+        await callback_query.answer()
+
+        # 1️⃣ Сначала: показать текущий вопрос с отметкой (редактируем старое сообщение)
+        choices = await sync_to_async(lambda: list(current_question.choices.all().order_by("order")))()
+        msg_text = render_selected_single_answer_text(current_question, choices, selected_id=choice.id)
+        await callback_query.message.edit_text(msg_text)
+
+        # 2️⃣ Потом: отправляем новый вопрос — отдельным сообщением
         await get_next_question(callback_query.message, state, respondent.history, respondent, question_id)
         await state.set_state(PollStates.waiting_for_answer)
-        await callback_query.answer()
-        # await callback_query.message.edit_reply_markup(reply_markup=None)
-        await callback_query.message.delete()
         return
 
     if cb_data.startswith("toggle:"):
@@ -81,11 +90,9 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
                 return
             selected_choices.add(cid)
         await state.update_data(selected_choices=list(selected_choices))
+        await callback_query.answer()
         await show_multiselect_question(callback_query.message, choice_map, selected_choices, current_question.text,
                                         show_back_button)
-        await callback_query.answer()
-        # await callback_query.message.edit_reply_markup(reply_markup=None)
-        await callback_query.message.delete()
         return
 
     if cb_data == "next":
@@ -97,11 +104,11 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         selected_objs = [await Choice.objects.aget(id=cid) for cid in selected_choices]
         await sync_to_async(answer.selected_choices.add)(*selected_objs)
         await state.update_data(selected_choices=[])
+        await callback_query.answer()
+        await callback_query.message.edit_reply_markup(reply_markup=None)
         await get_next_question(callback_query.message, state, respondent.history, respondent, question_id)
         await state.set_state(PollStates.waiting_for_answer)
-        await callback_query.answer()
-        # await callback_query.message.edit_reply_markup(reply_markup=None)
-        await callback_query.message.delete()
+        # await callback_query.message.delete()
         return
 
 

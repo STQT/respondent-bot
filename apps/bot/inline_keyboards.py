@@ -1,9 +1,13 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from asgiref.sync import sync_to_async
 from django.utils.translation import gettext_lazy as _
+
+from apps.polls.models import Choice
 
 ANOTHER_STR = str(_("📝 Бошқа"))
 BACK_STR = str(_("🔙 Ортга"))
 NEXT_STR = str(_("➡️ Кейинги савол"))
+
 
 def get_inline_keyboards_markup(next_question, choices, show_back_button=True):
     keyboard = []
@@ -27,6 +31,7 @@ def get_inline_keyboards_markup(next_question, choices, show_back_button=True):
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
+
 def get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_button=True):
     keyboard = []
     for num, cid in choice_map.items():
@@ -46,6 +51,7 @@ def get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_butt
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
+
 def render_question_inline_text(question, choices):
     msg_text = f"{str(_('Савол: '))} {question.text}\n\n"
     for choice in choices:
@@ -53,10 +59,29 @@ def render_question_inline_text(question, choices):
     msg_text += "\n" + str(_("Жавобни танланг 👇"))
     return msg_text
 
-def render_multiselect_inline_text(question_text, choice_map, selected_choices):
+
+async def render_multiselect_inline_text(question_text, choice_map, selected_choices):
     msg_text = f"{str(_('Савол: '))} {question_text}\n\n"
     msg_text += f"{str(_('Танланган жавоблар ✅ билан белгиланган:'))}\n\n"
+
+    choice_ids = list(choice_map.values())
+    choices_qs = await sync_to_async(lambda: list(
+        Choice.objects.filter(id__in=choice_ids)
+    ))()
+    choices_dict = {choice.id: choice for choice in choices_qs}
+
     for num, cid in choice_map.items():
+        choice = choices_dict.get(cid)
         marker = "✅" if cid in selected_choices else "▫️"
-        msg_text += f"{marker} {num}\n"
+        if choice:
+            msg_text += f"{marker} {num}. {choice.text}\n"
+
+    return msg_text
+
+
+def render_selected_single_answer_text(question, choices, selected_id):
+    msg_text = f"{str(_('Савол:'))} {question.text}\n\n"
+    for choice in choices:
+        marker = "✅" if choice.id == selected_id else ""
+        msg_text += f"{marker} {choice.order}. {choice.text}\n"
     return msg_text
