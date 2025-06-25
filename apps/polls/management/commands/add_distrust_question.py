@@ -6,23 +6,15 @@ from apps.polls.models import Question, Choice, Poll
 class Command(BaseCommand):
     help = "Add 'Distrust Causes' question to a specific poll for all question types"
 
-    def add_arguments(self, parser):
-        parser.add_argument('--poll_id', type=int, required=True, help='ID of the poll')
 
     def handle(self, *args, **options):
-        poll_id = options['poll_id']
-
-        try:
-            poll = Poll.objects.get_or_create(
-                name="Сабохат опа саволнома тест",
-                description=(
-                    "Ассалому алайкум Сабохат опа! \n\n"
-                    "Бу тест соровнома, қуйида сиз юборган саволлар кетма-кетлиги берилган"
-                )
+        poll, _created = Poll.objects.get_or_create(
+            name="Сабохат опа саволнома тест",
+            description=(
+                "Ассалому алайкум Сабохат опа! \n\n"
+                "Бу тест соровнома, қуйида сиз юборган саволлар кетма-кетлиги берилган"
             )
-        except Poll.DoesNotExist:
-            self.stderr.write(self.style.ERROR(f"Poll with id={poll_id} does not exist."))
-            return
+        )
 
         question_text = "Сизнингча, одамларда бир-бирига нисбатан ишончсизликнинг ортишига нима сабаб бўлмоқда?"
         choices = [
