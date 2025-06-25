@@ -4,7 +4,7 @@ from asgiref.sync import sync_to_async
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
-from apps.bot.utils import get_next_question, render_question, show_multiselect_question
+from apps.bot.utils import get_next_question, render_question, show_multiselect_question, get_current_question
 from apps.bot.inline_keyboards import render_selected_single_answer_text
 from apps.polls.models import Respondent, Answer, Question, Choice
 from apps.users.models import TGUser
@@ -15,7 +15,14 @@ poll_router = Router()
 @poll_router.callback_query()
 async def process_callback(callback_query: types.CallbackQuery, state: FSMContext, user: TGUser):
     data = await state.get_data()
-    respondent_id = data["respondent_id"]
+    respondent_id = data.get("respondent_id")
+
+    if respondent_id is None:
+        await callback_query.answer()
+        await callback_query.message.delete()
+        await get_current_question(callback_query.message, state, user)
+        return
+
     question_id = data["question_id"]
     choice_map = data.get("choice_map", {})
     selected_choices = set(data.get("selected_choices", []))
@@ -110,21 +117,3 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         await state.set_state(PollStates.waiting_for_answer)
         # await callback_query.message.delete()
         return
-
-
-@poll_router.message(PollStates.waiting_for_answer)
-async def process_custom_input(message: types.Message, state: FSMContext, user: TGUser):
-    data = await state.get_data()
-    respondent_id = data["respondent_id"]
-    question_id = data["question_id"]
-
-    respondent = await Respondent.objects.aget(id=respondent_id)
-    current_question = await Question.objects.aget(id=question_id)
-
-    await Answer.objects.filter(respondent=respondent, question=current_question).adelete()
-    answer = await Answer.objects.acreate(respondent=respondent, question=current_question)
-    answer.open_answer = message.text.strip()
-    await answer.asave()
-
-    await get_next_question(message, state, respondent.history, respondent, question_id)
-    await state.set_state(PollStates.waiting_for_answer)
