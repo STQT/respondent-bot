@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from apps.polls.models import Question, Choice, Poll
 
@@ -13,7 +16,8 @@ class Command(BaseCommand):
             description=(
                 "Ассалому алайкум Сабохат опа! \n\n"
                 "Бу тест соровнома, қуйида сиз юборган саволлар кетма-кетлиги берилган"
-            )
+            ),
+            deadline=timezone.now() + timedelta(days=7)
         )
 
         question_text = "Сизнингча, одамларда бир-бирига нисбатан ишончсизликнинг ортишига нима сабаб бўлмоқда?"
