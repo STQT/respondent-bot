@@ -117,3 +117,24 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
         await state.set_state(PollStates.waiting_for_answer)
         # await callback_query.message.delete()
         return
+
+@poll_router.message(PollStates.waiting_for_answer)
+async def process_custom_input(message: types.Message, state: FSMContext, user: TGUser):
+    data = await state.get_data()
+
+    respondent_id = data.get("respondent_id")
+    if respondent_id is None:
+        await get_current_question(message, state, user)
+        return
+    question_id = data["question_id"]
+
+    respondent = await Respondent.objects.aget(id=respondent_id)
+    current_question = await Question.objects.aget(id=question_id)
+
+    await Answer.objects.filter(respondent=respondent, question=current_question).adelete()
+    answer = await Answer.objects.acreate(respondent=respondent, question=current_question)
+    answer.open_answer = message.text.strip()
+    await answer.asave()
+
+    await get_next_question(message, state, respondent.history, respondent, question_id)
+    await state.set_state(PollStates.waiting_for_answer)
