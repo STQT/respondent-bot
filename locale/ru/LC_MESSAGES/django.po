@@ -1,0 +1,418 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-26 01:12+0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
+
+#: apps/bot/handlers/callback.py:23 apps/bot/handlers/callback.py:34
+#: apps/bot/handlers/callback.py:40
+#, python-brace-format
+msgid "{count} ta"
+msgstr "{count} шт"
+
+#: apps/bot/handlers/callback.py:47
+msgid "Savatga qo'shildi"
+msgstr "Добавлен в корзину"
+
+#: apps/bot/handlers/callback.py:48
+#, python-brace-format
+msgid "Qo'shildi: {count} ta"
+msgstr "Добавлен: {count} шт"
+
+#: apps/bot/handlers/callback.py:68
+msgid "Savat tozalandi"
+msgstr "Корзина очищен"
+
+#: apps/bot/handlers/callback.py:79 apps/bot/handlers/cart.py:17
+msgid "Savat bo'sh"
+msgstr "Корзина пуста"
+
+#: apps/bot/handlers/callback.py:110
+msgid "To'lov turini tanlang 👇"
+msgstr "Выберите способ оплаты 👇"
+
+#: apps/bot/handlers/cart.py:20
+msgid ""
+"Savatchadagi mahsulotlar:\n"
+"\n"
+msgstr ""
+"Продукты в корзине:\n"
+"\n"
+
+#: apps/bot/handlers/cart.py:32
+#, python-brace-format
+msgid ""
+"\n"
+"Umumiy summa: {total_sum}"
+msgstr ""
+"\n"
+"Общая сумма: {total_sum}"
+
+#: apps/bot/handlers/menu.py:39
+msgid "Maxsulotni tanlang"
+msgstr "Выберите продукт"
+
+#: apps/bot/handlers/menu.py:74
+msgid "Rasm bizni serverda topilmadi."
+msgstr "Изображение не найдено на сервере."
+
+#: apps/bot/handlers/menu.py:77
+msgid "Xozircha faqat lokal tarmoqdagi rasmlarni yuborish ishlaydi."
+msgstr "Пока поддерживается только отправка локальных изображений."
+
+#: apps/bot/handlers/menu.py:80
+msgid "Foto mavjud emas."
+msgstr "Фото отсутствует."
+
+#: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:84
+msgid "Naqd"
+msgstr "Наличные"
+
+#: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:89
+#: apps/bot/handlers/order.py:190 apps/orders/models.py:9
+msgid "ClickUZ"
+msgstr "ClickUZ"
+
+#: apps/bot/handlers/order.py:76 apps/bot/handlers/order.py:118
+#: apps/bot/handlers/order.py:141 apps/bot/handlers/order.py:164
+#: apps/bot/keyboards/markups.py:51
+msgid "Yetkazib berish"
+msgstr "Доставка"
+
+#: apps/bot/handlers/order.py:92
+msgid "Sizning buyurtmangiz"
+msgstr "Ваша заказ"
+
+#: apps/bot/handlers/order.py:93
+msgid "Quyidagi mahsulotlar uchun to'lov:"
+msgstr "Оплата на следующие продукты:"
+
+#: apps/bot/handlers/order.py:97
+#, python-brace-format
+msgid "{product} ({count} dona)"
+msgstr "{product} ({count} шт)"
+
+#: apps/bot/handlers/order.py:122
+msgid "📍 Manzilni yuborish"
+msgstr "📍 Отправить локацию"
+
+#: apps/bot/handlers/order.py:127
+msgid "Iltimos, manzilingizni yuboring 📍 yoki manzilni yozing ✏️"
+msgstr "Пожалуйста, отправьте локацию 📍 или напишите адрес ✏️"
+
+#: apps/bot/handlers/order.py:148 apps/bot/handlers/order.py:171
+msgid "Buyurtmangiz yetkazilmoqda. Tez orada sizga yetib boradi."
+msgstr "Ваш заказ доставляется. В скором времени доставится."
+
+#: apps/bot/handlers/order.py:195
+#, python-brace-format
+msgid ""
+"To'lov amalga oshdi!\n"
+"\n"
+"Buyurtma: #{order_id}\n"
+"Summa: {summa} {currency}"
+msgstr ""
+"Оплата совершена!\n"
+"\n"
+"Заказ: #{order_id}\n"
+"Сумма: {summa} {currency}"
+
+#: apps/bot/handlers/order.py:214
+#, python-brace-format
+msgid "{product} ({count} dona) - {price} UZS"
+msgstr "{product} ({count} шт) - {price} UZS"
+
+#: apps/bot/handlers/order.py:225
+#, python-brace-format
+msgid ""
+"Buyurtmangiz qabul qilindi!\n"
+"\n"
+"Mahsulotlar:\n"
+"{order_summary}\n"
+"\n"
+"Umumiy summa: {total_sum} UZS\n"
+"\n"
+"Tez orada operator siz bilan bog'lanadi."
+msgstr ""
+"Ваш заказ принят!\n"
+"\n"
+"Продукты:\n"
+"{order_summary}\n"
+"\n"
+"Общая сумма: {total_sum} UZS\n"
+"\n"
+"Скоро с вами свяжутся наши операторы."
+
+#: apps/bot/handlers/start.py:51
+msgid "Quyidagi tugmalardan foydalaning👇"
+msgstr "Используйте кнопки ниже👇"
+
+#: apps/bot/handlers/start.py:74
+msgid "Iltimos faqat O'zbekistonga tegishli raqamni yuboring"
+msgstr "Пожалуйста, в боте можно использовать только Узбекистанские номера"
+
+#: apps/bot/keyboards/inline.py:17
+msgid "📥 Savatga qo'shish"
+msgstr "📥 Добавить в корзину"
+
+#: apps/bot/keyboards/inline.py:26 apps/bot/keyboards/inline.py:37
+msgid "☑️ Ha"
+msgstr "☑️ Да"
+
+#: apps/bot/keyboards/inline.py:28 apps/bot/keyboards/inline.py:39
+msgid "✖️ Yo'q"
+msgstr "✖️ Нет"
+
+#: apps/bot/keyboards/inline.py:43 apps/bot/keyboards/markups.py:8
+msgid "⬅️ Ortga"
+msgstr "⬅️ Назад"
+
+#: apps/bot/keyboards/inline.py:51
+msgid "🗑 Savatni tozalash"
+msgstr "🗑 Очистить корзину"
+
+#: apps/bot/keyboards/inline.py:52
+msgid "🚖 Buyurtma berish"
+msgstr "🚖 Заказать"
+
+#: apps/bot/keyboards/inline.py:53
+msgid "🛒 Mahsulot qo'shish"
+msgstr "🛒 Добавить продукт"
+
+#: apps/bot/keyboards/markups.py:7
+msgid "💴 Naqd"
+msgstr "💴 Наличные"
+
+#: apps/bot/keyboards/markups.py:7
+msgid "💲 Click"
+msgstr "Click"
+
+#: apps/bot/keyboards/markups.py:9
+msgid "🌎 Tilni sozlash"
+msgstr "🌎 Изменить язык"
+
+#: apps/bot/keyboards/markups.py:10
+msgid "🛒 Savat"
+msgstr "🛒 Корзина"
+
+#: apps/bot/keyboards/markups.py:38
+msgid "📱 Telefon yuborish"
+msgstr "📱 Отправить номер"
+
+#: apps/bot/utils.py:45
+msgid "Ushbu botdan foydalanish uchun quyidagi tugmalardan foydalaning👇"
+msgstr "Используйте кнопку ниже, чтобы использовать этот бот👇"
+
+#: apps/bot/utils.py:52
+msgid "Iltimos, kerakli tilni tanlang👇"
+msgstr "Пожалуйста, выберите нужный язык из списка ниже👇"
+
+#: apps/bot/utils.py:60
+msgid "Botdan foydalanish uchun telefon raqamingiz yuboring."
+msgstr "Чтобы использовать бот, отправьте свой номер."
+
+#: apps/orders/apps.py:8
+msgid "Buyurtmalar bo'limi"
+msgstr "Отдел заказов"
+
+#: apps/orders/models.py:8
+msgid "Наличные"
+msgstr ""
+
+#: apps/orders/models.py:11
+msgid "Xaridor ismi"
+msgstr ""
+
+#: apps/orders/models.py:12
+msgid "Xaridor raqami"
+msgstr ""
+
+#: apps/orders/models.py:13
+msgid "Xaridor manzili"
+msgstr ""
+
+#: apps/orders/models.py:14
+msgid "To'lov usuli"
+msgstr ""
+
+#: apps/orders/models.py:15
+msgid "Umumiy summa"
+msgstr ""
+
+#: apps/orders/models.py:16
+msgid "Yaratilgan vaqt"
+msgstr ""
+
+#: apps/orders/models.py:19 apps/orders/models.py:24
+msgid "Buyurtma"
+msgstr ""
+
+#: apps/orders/models.py:20
+msgid "Buyurtmalar"
+msgstr ""
+
+#: apps/orders/models.py:25
+msgid "Maxsulot nomi"
+msgstr ""
+
+#: apps/orders/models.py:26
+msgid "Maxsulot soni"
+msgstr ""
+
+#: apps/orders/models.py:27
+msgid "Umumiy narx"
+msgstr ""
+
+#: apps/orders/models.py:30
+msgid "Buyurtma maxsuloti"
+msgstr ""
+
+#: apps/orders/models.py:31
+msgid "Buyurtma maxsulotlari"
+msgstr ""
+
+#: apps/products/apps.py:8
+msgid "Maxsulotlar bo'limi"
+msgstr ""
+
+#: apps/products/models.py:6 apps/products/models.py:22
+msgid "Nomi UZ"
+msgstr ""
+
+#: apps/products/models.py:7 apps/products/models.py:23
+msgid "Nomi RU"
+msgstr ""
+
+#: apps/products/models.py:10 apps/products/models.py:18
+msgid "Kategoriya"
+msgstr ""
+
+#: apps/products/models.py:11
+msgid "Kategoriyalar"
+msgstr ""
+
+#: apps/products/models.py:20
+msgid "Narxi"
+msgstr ""
+
+#: apps/products/models.py:21
+msgid "Rasmi"
+msgstr ""
+
+#: apps/products/models.py:24
+msgid "Rasmi URI"
+msgstr ""
+
+#: apps/products/models.py:25
+msgid "Rasm yangilandimi?"
+msgstr ""
+
+#: apps/products/models.py:29
+msgid "Maxsulot"
+msgstr ""
+
+#: apps/products/models.py:30
+msgid "Maxsulotlar"
+msgstr ""
+
+#: apps/templates/allauth/layouts/entrance.html:8
+msgid "Sign In"
+msgstr ""
+
+#: apps/users/admin.py:16
+msgid "Personal info"
+msgstr ""
+
+#: apps/users/admin.py:18
+msgid "Permissions"
+msgstr ""
+
+#: apps/users/admin.py:29
+msgid "Important dates"
+msgstr ""
+
+#: apps/users/apps.py:9
+msgid "Foydalanuvchilar bo'limi"
+msgstr ""
+
+#: apps/users/forms.py:21 apps/users/tests/test_forms.py:35
+msgid "This username has already been taken."
+msgstr ""
+
+#: apps/users/models.py:19
+msgid "Name of User"
+msgstr ""
+
+#: apps/users/models.py:24 apps/users/models.py:25
+msgid "Admin foydalanuvchilar"
+msgstr ""
+
+#: apps/users/models.py:38
+msgid "ID пользователя"
+msgstr ""
+
+#: apps/users/models.py:39
+msgid "Имя пользователя"
+msgstr ""
+
+#: apps/users/models.py:40
+msgid "Язык пользователя"
+msgstr ""
+
+#: apps/users/models.py:41
+msgid "Полное имя"
+msgstr ""
+
+#: apps/users/models.py:42
+msgid "Телефонный номер"
+msgstr ""
+
+#: apps/users/models.py:43
+msgid "Активен?"
+msgstr ""
+
+#: apps/users/models.py:46
+msgid "Telegram foydalanuvchi"
+msgstr ""
+
+#: apps/users/models.py:47
+msgid "Telegram foydalanuvchilar"
+msgstr ""
+
+#: apps/users/models.py:60
+msgid "Telegram lokatsiya"
+msgstr ""
+
+#: apps/users/models.py:61
+msgid "Telegram lokatsiyalar"
+msgstr ""
+
+#: apps/users/tests/test_views.py:72 apps/users/views.py:25
+msgid "Information successfully updated"
+msgstr ""
+
+#: config/settings/base.py:34
+msgid "O'zbek tili"
+msgstr ""
+
+#: config/settings/base.py:35
+msgid "Русский язык"
+msgstr ""
+
+#, python-brace-format
+#~ msgid "Hello, <b>{full_name}!</b>"
+#~ msgstr "Привет, <b>{full_name}!</b>"
