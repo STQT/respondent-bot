@@ -156,10 +156,10 @@ async def show_multiselect_question(message, choice_map, selected_choices, quest
     await message.answer(msg_text, reply_markup=markup)
 
 
-async def get_current_question(message, state: FSMContext, user):
+async def get_current_question(bot, chat_id, state: FSMContext, user):
     active_polls = Poll.objects.filter(deadline__gte=timezone.now())
     if not await active_polls.aexists():
-        await message.answer(str(_("Ҳозирча актив сўровномалар мавжуд эмас.")))
+        await bot.send_message(chat_id, str(_("Ҳозирча актив сўровномалар мавжуд эмас.")))
         return
 
     completed_respondents = Respondent.objects.filter(
@@ -172,7 +172,7 @@ async def get_current_question(message, state: FSMContext, user):
     ).filter(has_completed=False)
 
     if not await available_polls.aexists():
-        await message.answer(str(_("Ҳозирча сиз учун янги сўровномалар мавжуд эмас.")))
+        await bot.send_message(chat_id, str(_("Ҳозирча сиз учун янги сўровномалар мавжуд эмас.")))
         return
 
     respondent = await Respondent.objects.filter(
@@ -193,7 +193,7 @@ async def get_current_question(message, state: FSMContext, user):
         print("🔁 Повторно отправляем неотвеченный вопрос")
         await state.update_data(respondent_id=respondent.id)
         await send_poll_question(
-            message.bot, message.from_user.id, state, respondent, unfinished_answer.question
+            bot, chat_id, state, respondent, unfinished_answer.question
         )
         return
 
@@ -208,9 +208,9 @@ async def get_current_question(message, state: FSMContext, user):
     if not next_question:
         respondent.finished_at = timezone.now()
         await respondent.asave()
-        await message.answer(str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
+        await bot.send_message(chat_id, str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
         return
 
     await state.update_data(respondent_id=respondent.id)
-    await get_next_question(message.bot, message.from_user.id, state, respondent, [], next_question.id)
+    await get_next_question(bot, chat_id, state, respondent, respondent.history, next_question.id)
     await state.set_state(PollStates.waiting_for_answer)

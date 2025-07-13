@@ -1,11 +1,10 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
-from asgiref.sync import sync_to_async
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
-from apps.bot.utils import get_next_question, render_question, show_multiselect_question
-from apps.polls.models import Respondent, Answer, Question, Choice
+from apps.bot.utils import get_next_question
+from apps.polls.models import Respondent, Answer, Question
 from apps.users.models import TGUser
 
 poll_router = Router()

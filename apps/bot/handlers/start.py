@@ -32,11 +32,12 @@ async def command_start_handler(message: Message, state: FSMContext, user: TGUse
             print(f"⚠️ Не удалось удалить сообщение: {e}")
 
     # 2. Получаем и отправляем текущий неотвеченный вопрос
-    await get_current_question(message, state, user)
+    await get_current_question(message.bot, message.from_user.id, state, user)
 
 
 @start_router.poll_answer()
 async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: TGUser | None):
+    print("WORKING")
     telegram_poll_id = poll_answer.poll_id
 
     try:
@@ -45,6 +46,18 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
         )
     except Answer.DoesNotExist:
         print("❌ Не найден answer по poll_id")
+        return
+
+    if not poll_answer.option_ids:
+        print("⚠️ Пользователь ничего не выбрал, повторяем вопрос")
+        unfinished_answer = await Answer.objects.select_related("question", "respondent").filter(
+            respondent__tg_user=user,
+            is_answered=False,
+            telegram_msg_id__isnull=False
+        ).order_by("-id").afirst()
+        await poll_answer.bot.delete_message(chat_id=unfinished_answer.telegram_chat_id,
+                                             message_id=unfinished_answer.telegram_msg_id)
+        await get_current_question(poll_answer.bot, poll_answer.user.id, state, user)
         return
     selected_index = poll_answer.option_ids[0]
 
@@ -57,10 +70,11 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
 
     if is_mixed and selected_index == len(choices):
         # Выбран вариант "Бошқа"
+        print("IS MIXED")
         await state.update_data(
             answer_id=answer.id,
-            respondent_id=answer.respondent.id,
-            question_id=answer.question.id
+            respondent_id=answer.respondent_id,
+            question_id=answer.question_id
         )
         await poll_answer.bot.send_message(
             poll_answer.user.id,
@@ -84,11 +98,12 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
     await poll_answer.bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
     # Следующий вопрос
     await get_next_question(poll_answer.bot, poll_answer.user.id, state, answer.respondent,
-                            [], answer.question.id)
+                            answer.respondent.history, answer.question_id)
 
 
 @start_router.message(PollStates.waiting_for_mixed_custom_input)
 async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
+    print("HANDLING")
     data = await state.get_data()
     answer_id = data.get("answer_id")
 
@@ -102,4 +117,5 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
     await answer.asave()
     await message.answer("✅ Жавоб қабул қилинди!")
 
-    await get_next_question(message.bot, message.chat.id, state, answer.respondent, [], answer.question.id)
+    await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
+                            answer.question.id)
