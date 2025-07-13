@@ -1,3 +1,4 @@
+from aiogram import Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 from asgiref.sync import sync_to_async
@@ -21,6 +22,55 @@ BACK_STR = str(_("🔙 Ортга"))
 NEXT_STR = str(_("➡️ Кейинги савол"))
 
 
+async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, respondent: Respondent, question: Question):
+    choices = await sync_to_async(list)(question.choices.all().order_by("order"))
+    allows_multiple_answers = question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE
+
+    # 💬 Открытый или смешанный вопрос — отправим текст
+    if question.type == Question.QuestionTypeChoices.OPEN:
+        await bot.send_message(
+            chat_id,
+            f"📨 {question.text}\n\nИлтимос, жавобингизни матн сифатида юборинг ✍️"
+        )
+
+        # Создаём пустой Answer для отслеживания
+        answer, _ = await Answer.objects.aget_or_create(
+            respondent=respondent,
+            question=question
+        )
+
+        # Обновляем состояние FSM, чтобы ждать текстовый ответ
+        await state.update_data(
+            question_id=question.id,
+            respondent_id=respondent.id,
+            answer_id=answer.id
+        )
+        await state.set_state(PollStates.waiting_for_answer)
+        return
+
+    # 📊 Закрытый вопрос — отправим Telegram poll
+    options = [choice.text for choice in choices]
+    if question.type == Question.QuestionTypeChoices.MIXED:
+        options.append("📝 Бошқа")
+    poll_message = await bot.send_poll(
+        chat_id=chat_id,
+        question=question.text,
+        options=options,
+        is_anonymous=False,
+        allows_multiple_answers=allows_multiple_answers
+    )
+
+    # Создаём или обновляем Answer с telegram_poll_id
+    answer, created = await Answer.objects.aupdate_or_create(
+        respondent=respondent,
+        question=question,
+        defaults={"telegram_poll_id": poll_message.poll.id,
+                  "telegram_msg_id": poll_message.message_id,
+                  "telegram_chat_id": poll_message.chat.id
+                  }
+    )
+
+
 async def async_get_or_create_user(defaults=None, **kwargs):
     """
     Async equivalent of Django's get_or_create.
@@ -42,7 +92,7 @@ async def async_get_or_create_user(defaults=None, **kwargs):
     return obj, created
 
 
-async def get_next_question(message: Message, state: FSMContext, previous_questions, respondent, question_id):
+async def get_next_question(bot, chat_id, state: FSMContext, respondent, previous_questions, question_id):
     all_questions = await sync_to_async(lambda: respondent.poll.questions.all())()
     answered_ids = await sync_to_async(list)(
         Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
@@ -52,7 +102,7 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
     if not next_question:
         respondent.finished_at = timezone.now()
         await respondent.asave()
-        await message.answer(str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
+        await bot.send_message(chat_id, str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
         await state.clear()
         return
 
@@ -64,8 +114,7 @@ async def get_next_question(message: Message, state: FSMContext, previous_questi
         question_id=next_question.id,
         previous_questions=updated_history
     )
-
-    await render_question(message, state, next_question, updated_history)
+    await send_poll_question(bot, chat_id, state, respondent, next_question)
     await state.set_state(PollStates.waiting_for_answer)
 
 
@@ -107,12 +156,9 @@ async def show_multiselect_question(message, choice_map, selected_choices, quest
     await message.answer(msg_text, reply_markup=markup)
 
 
-async def get_current_question(message: Message, state: FSMContext, user):
-    print(f"🚦 get_current_question() called for user {user.id}")
-
+async def get_current_question(message, state: FSMContext, user):
     active_polls = Poll.objects.filter(deadline__gte=timezone.now())
     if not await active_polls.aexists():
-        print("❌ No active polls")
         await message.answer(str(_("Ҳозирча актив сўровномалар мавжуд эмас.")))
         return
 
@@ -126,11 +172,7 @@ async def get_current_question(message: Message, state: FSMContext, user):
     ).filter(has_completed=False)
 
     if not await available_polls.aexists():
-        print("🔒 No available polls for user")
-        await message.answer(
-            str(_("Ҳозирча сиз учун янги сўровномалар мавжуд эмас.")),
-            reply_markup=ReplyKeyboardRemove()
-        )
+        await message.answer(str(_("Ҳозирча сиз учун янги сўровномалар мавжуд эмас.")))
         return
 
     respondent = await Respondent.objects.filter(
@@ -140,29 +182,35 @@ async def get_current_question(message: Message, state: FSMContext, user):
     if not respondent:
         poll = await available_polls.afirst()
         respondent = await Respondent.objects.acreate(tg_user=user, poll=poll)
-        print(f"🆕 New respondent created: {respondent.id}")
-    else:
-        print(f"👤 Existing respondent: {respondent.id}")
 
+    # ✅ Попытка найти неотвеченный Answer
+    unfinished_answer = await Answer.objects.select_related("question").filter(
+        respondent=respondent,
+        is_answered=False
+    ).order_by("id").afirst()
+
+    if unfinished_answer:
+        print("🔁 Повторно отправляем неотвеченный вопрос")
+        await state.update_data(respondent_id=respondent.id)
+        await send_poll_question(
+            message.bot, message.from_user.id, state, respondent, unfinished_answer.question
+        )
+        return
+
+    # 🧭 Продолжение как раньше: ищем след. неотвеченный вопрос
     poll = await sync_to_async(lambda: respondent.poll)()
     questions = await sync_to_async(lambda: poll.questions.all())()
-    answered_ids = Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
+    answered_ids = await sync_to_async(list)(
+        Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
+    )
     next_question = await questions.exclude(id__in=answered_ids).afirst()
 
     if not next_question:
-        print("📭 No next question — poll complete")
         respondent.finished_at = timezone.now()
         await respondent.asave()
         await message.answer(str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
         return
 
-    print(f"➡️ Starting at question_id={next_question.id}")
     await state.update_data(respondent_id=respondent.id)
-    await get_next_question(
-        message=message,
-        state=state,
-        previous_questions=[],
-        respondent=respondent,
-        question_id=next_question.id
-    )
+    await get_next_question(message.bot, message.from_user.id, state, respondent, [], next_question.id)
     await state.set_state(PollStates.waiting_for_answer)

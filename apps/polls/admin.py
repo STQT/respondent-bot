@@ -16,6 +16,11 @@ class ChoiceInline(admin.TabularInline):
     model = Choice
     extra = 1
 
+    def get_max_num(self, request, obj=None, **kwargs):
+        if obj and obj.type == Question.QuestionTypeChoices.MIXED:
+            return 11
+        return 12
+
 
 class QuestionInline(admin.StackedInline):
     model = Question

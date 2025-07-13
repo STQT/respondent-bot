@@ -91,9 +91,13 @@ class Answer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     selected_choices = models.ManyToManyField(Choice, blank=True)
     open_answer = models.TextField(blank=True)
+    is_answered = models.BooleanField(default=False)
+    telegram_poll_id = models.CharField(max_length=255, null=True, blank=True)
+    telegram_msg_id = models.CharField(max_length=255, null=True, blank=True)
+    telegram_chat_id = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
-        return f'Ответ на "{self.question.text}" от пользователя {self.respondent.tg_user.id}'
+        return f'Ответ на "{self.question.text}" от пользователя {self.respondent.tg_user_id}'
 
     class Meta:
         verbose_name = _("Ответ")
