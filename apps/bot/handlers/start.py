@@ -118,4 +118,4 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
     await message.answer("✅ Жавоб қабул қилинди!")
 
     await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
-                            answer.question.id)
+                            answer.question_id)
