@@ -155,50 +155,55 @@ async def show_multiselect_question(message, choice_map, selected_choices, quest
     markup = get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_button)
     await message.answer(msg_text, reply_markup=markup)
 
-
-async def get_current_question(bot, chat_id, state: FSMContext, user):
+async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=None):
     active_polls = Poll.objects.filter(deadline__gte=timezone.now())
     if not await active_polls.aexists():
         await bot.send_message(chat_id, str(_("Ҳозирча актив сўровномалар мавжуд эмас.")))
         return
 
-    completed_respondents = Respondent.objects.filter(
-        tg_user=user,
-        poll=OuterRef('pk'),
-        finished_at__isnull=False
-    )
-    available_polls = active_polls.annotate(
-        has_completed=Exists(completed_respondents)
-    ).filter(has_completed=False)
+    if poll_uuid:
+        poll = await Poll.objects.filter(uuid=poll_uuid, deadline__gte=timezone.now()).afirst()
+        if not poll:
+            await bot.send_message(chat_id, str(_("Кечирасиз, ушбу сўровнома топилмади ёки муддати тугаган.")))
+            return
+        available_polls = [poll]
+    else:
+        completed_respondents = Respondent.objects.filter(
+            tg_user=user,
+            poll=OuterRef('pk'),
+            finished_at__isnull=False
+        )
+        available_polls = active_polls.annotate(
+            has_completed=Exists(completed_respondents)
+        ).filter(has_completed=False)
 
-    if not await available_polls.aexists():
-        await bot.send_message(chat_id, str(_("Ҳозирча сиз учун янги сўровномалар мавжуд эмас.")))
-        return
+    if isinstance(available_polls, list):
+        poll = available_polls[0]
+    else:
+        if not await available_polls.aexists():
+            await bot.send_message(chat_id, str(_("Ҳозирча сиз учун янги сўровномалар мавжуд эмас.")))
+            return
+        poll = await available_polls.afirst()
 
     respondent = await Respondent.objects.filter(
-        tg_user=user, poll__in=active_polls, finished_at__isnull=True
+        tg_user=user, poll=poll, finished_at__isnull=True
     ).afirst()
 
     if not respondent:
-        poll = await available_polls.afirst()
         respondent = await Respondent.objects.acreate(tg_user=user, poll=poll)
 
-    # ✅ Попытка найти неотвеченный Answer
     unfinished_answer = await Answer.objects.select_related("question").filter(
         respondent=respondent,
         is_answered=False
     ).order_by("id").afirst()
 
     if unfinished_answer:
-        print("🔁 Повторно отправляем неотвеченный вопрос")
         await state.update_data(respondent_id=respondent.id)
         await send_poll_question(
             bot, chat_id, state, respondent, unfinished_answer.question
         )
         return
 
-    # 🧭 Продолжение как раньше: ищем след. неотвеченный вопрос
-    poll = await sync_to_async(lambda: respondent.poll)()
     questions = await sync_to_async(lambda: poll.questions.all())()
     answered_ids = await sync_to_async(list)(
         Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)

@@ -1,38 +1,80 @@
+from datetime import timezone
+
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types import Message, PollAnswer
 from asgiref.sync import sync_to_async
+from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
 from apps.bot.utils import get_current_question, get_next_question
-from apps.polls.models import Answer, Question
+from apps.polls.models import Answer, Question, Respondent, Poll
 from apps.users.models import TGUser
 
 start_router = Router()
 
 
-@start_router.message(CommandStart())
-async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None):
-    unfinished_answer = await Answer.objects.select_related("question", "respondent").filter(
-        respondent__tg_user=user,
-        is_answered=False,
-        telegram_msg_id__isnull=False
-    ).order_by("-id").afirst()
-    print(unfinished_answer, "$" * 50)
+@start_router.message(CommandStart(deep_link=True))
+async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
+    poll_uuid = None
+    if command.args and command.args.startswith("poll_"):
+        poll_uuid = command.args.removeprefix("poll_")
 
-    if unfinished_answer:
-        try:
-            await message.bot.delete_message(
-                chat_id=unfinished_answer.telegram_chat_id,
-                message_id=unfinished_answer.telegram_msg_id
-            )
-            print(f"🗑️ Удалено старое сообщение: {unfinished_answer.telegram_msg_id}")
-        except Exception as e:
-            print(f"⚠️ Не удалось удалить сообщение: {e}")
+    if poll_uuid:
+        poll = await Poll.objects.filter(uuid=poll_uuid, deadline__gte=timezone.now()).afirst()
+        if not poll:
+            await message.answer(str(_("Кечирасиз, ушбу сўровнома топилмади ёки муддати тугаган.")))
+            return
 
-    # 2. Получаем и отправляем текущий неотвеченный вопрос
-    await get_current_question(message.bot, message.from_user.id, state, user)
+        respondent = await Respondent.objects.filter(tg_user=user, poll=poll).afirst()
+
+        if respondent:
+            if respondent.finished_at:
+                # ✅ Уже прошел — предложить повторить
+                markup = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔁 Қайта бошлаш", callback_data=f"poll_restart:{poll.uuid}")]
+                ])
+                await message.answer(str(_("Сиз бу сўровномани аввал якунлагансиз.")), reply_markup=markup)
+            else:
+                # 🔁 Не окончен — предложить продолжить или начать заново
+                markup = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="🔄 Давом этиш", callback_data=f"poll_continue:{poll.uuid}"),
+                        InlineKeyboardButton(text="♻️ Қайта бошлаш", callback_data=f"poll_restart:{poll.uuid}")
+                    ]
+                ])
+                await message.answer(
+                    str(_("Сиз сўровномани тўлиқ якунламагансиз. Давом этасизми ёки қайта бошлайсизми?")),
+                    reply_markup=markup)
+        else:
+            # ✳️ Первый раз — сразу запустить
+            await get_current_question(message.bot, message.from_user.id, state, user, poll_uuid=poll_uuid)
+    else:
+        # Стандартный сценарий
+        await get_current_question(message.bot, message.from_user.id, state, user)
+
+
+@start_router.callback_query(lambda c: c.data.startswith("poll_"))
+async def poll_callback_handler(callback, state: FSMContext, user: TGUser | None):
+    action, poll_uuid = callback.data.split(":", 1)
+    poll = await Poll.objects.filter(uuid=poll_uuid, deadline__gte=timezone.now()).afirst()
+
+    if not poll:
+        await callback.message.edit_text(str(_("Кечирасиз, ушбу сўровнома топилмади ёки муддати тугаган.")))
+        return
+
+    if action == "poll_continue":
+        await callback.message.delete()
+        await get_current_question(callback.bot, callback.from_user.id, state, user, poll_uuid=poll_uuid)
+    elif action == "poll_restart":
+        # ❗ Удаляем старого респондента и его ответы
+        await Answer.objects.filter(respondent__tg_user=user, respondent__poll=poll).adelete()
+        await Respondent.objects.filter(tg_user=user, poll=poll).adelete()
+
+        await callback.message.delete()
+        await get_current_question(callback.bot, callback.from_user.id, state, user, poll_uuid=poll_uuid)
 
 
 @start_router.poll_answer()
