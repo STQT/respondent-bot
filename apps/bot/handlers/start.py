@@ -1,4 +1,4 @@
-from datetime import timezone
+from django.utils import timezone
 
 from aiogram import Router
 from aiogram.filters import CommandStart
