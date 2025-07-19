@@ -15,6 +15,19 @@ from apps.users.models import TGUser
 
 start_router = Router()
 
+async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
+    """
+    Безопасно удаляет или редактирует сообщение.
+    Если текст указан — редактирует, иначе удаляет.
+    """
+    try:
+        if text is not None:
+            await message.edit_text(text, reply_markup=reply_markup)
+        else:
+            await message.delete()
+    except Exception as e:
+        print(f"⚠️ safe_delete_or_edit error: {e}")
+
 
 @start_router.message(CommandStart(deep_link=True))
 async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
@@ -73,7 +86,7 @@ async def poll_callback_handler(callback, state: FSMContext, user: TGUser | None
         await Answer.objects.filter(respondent__tg_user=user, respondent__poll=poll).adelete()
         await Respondent.objects.filter(tg_user=user, poll=poll).adelete()
 
-        await callback.message.edit_text(str(_("Сўровнома янгидан бошланди.")))
+        await safe_delete_or_edit(callback.message, str(_("Сўровнома янгидан бошланди.")))
         await get_current_question(callback.bot, callback.from_user.id, state, user, poll_uuid=poll_uuid)
 
 
