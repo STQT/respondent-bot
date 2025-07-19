@@ -66,14 +66,14 @@ async def poll_callback_handler(callback, state: FSMContext, user: TGUser | None
         return
 
     if action == "poll_continue":
-        await callback.message.delete()
+        await callback.message.edit_text(str(_("Сўровнома давом этилди.")))
         await get_current_question(callback.bot, callback.from_user.id, state, user, poll_uuid=poll_uuid)
     elif action == "poll_restart":
         # ❗ Удаляем старого респондента и его ответы
         await Answer.objects.filter(respondent__tg_user=user, respondent__poll=poll).adelete()
         await Respondent.objects.filter(tg_user=user, poll=poll).adelete()
 
-        await callback.message.delete()
+        await callback.message.edit_text(str(_("Сўровнома янгидан бошланди.")))
         await get_current_question(callback.bot, callback.from_user.id, state, user, poll_uuid=poll_uuid)
 
 
@@ -135,7 +135,7 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
 
     is_mixed = answer.question.type == Question.QuestionTypeChoices.MIXED
 
-    if is_mixed and selected_index == len(choices):
+    if is_mixed and len(selected_indexes) == 1 and selected_indexes[0] == len(choices):
         # Выбран вариант "Бошқа"
         await state.update_data(
             answer_id=answer.id,
