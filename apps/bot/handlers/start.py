@@ -149,21 +149,21 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
                     text=str(_("Ушбу савол жавоби 10 та жавобдан коп! Админ билан богланинг"))
                 )
                 return
+            if await poll_checker(poll_answer.bot, answer.telegram_chat_id, answer.question, options) is True:
+                poll_message = await poll_answer.bot.send_poll(
+                    chat_id=answer.telegram_chat_id,
+                    question=answer.question.text + f"\n⚠️ Иложи борича энг кўпи билан {max_choices} та жавобни танланг.",
+                    options=options,
+                    is_anonymous=False,
+                    allows_multiple_answers=True
+                )
 
-            poll_message = await poll_answer.bot.send_poll(
-                chat_id=answer.telegram_chat_id,
-                question=answer.question.text + f"\n⚠️ Иложи борича энг кўпи билан {max_choices} та жавобни танланг.",
-                options=options,
-                is_anonymous=False,
-                allows_multiple_answers=True
-            )
-
-            # 🔄 Обновляем answer с новым poll_id и message_id
-            answer.telegram_poll_id = poll_message.poll.id
-            answer.telegram_msg_id = poll_message.message_id
-            answer.telegram_chat_id = poll_message.chat.id
-            await answer.asave()
-            return
+                # 🔄 Обновляем answer с новым poll_id и message_id
+                answer.telegram_poll_id = poll_message.poll.id
+                answer.telegram_msg_id = poll_message.message_id
+                answer.telegram_chat_id = poll_message.chat.id
+                await answer.asave()
+                return
 
     # Загружаем варианты
     choices = await sync_to_async(list)(answer.question.choices.all().order_by("order"))

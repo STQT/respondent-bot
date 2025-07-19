@@ -22,6 +22,30 @@ BACK_STR = str(_("🔙 Ортга"))
 NEXT_STR = str(_("➡️ Кейинги савол"))
 
 
+async def poll_checker(bot, chat_id, question, options):
+    if len(question.text) > 255:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=str(_("Савол матни жуда узун. Админ билан боғланинг."))
+        )
+        return
+
+    if len(options) > 10:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=str(_("Ушбу савол жавоби 10 та жавобдан коп! Админ билан богланинг"))
+        )
+        return
+
+    for opt in options:
+        if len(opt) > 100:
+            await bot.send_message(
+                chat_id=chat_id,
+                text=str(_("Жавоб вариантларидан бири 100 белгидан узун. Админ билан боғланинг."))
+            )
+            return
+    return True
+
 async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, respondent: Respondent, question: Question):
     choices = await sync_to_async(list)(question.choices.all().order_by("order"))
     allows_multiple_answers = question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE
@@ -58,31 +82,26 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
     if question.type == Question.QuestionTypeChoices.MIXED:
         options.append("📝 Бошқа")
 
-    if len(options) > 10:
-        await bot.send_message(
+    if await poll_checker(bot, chat_id, question, options) is True:
+        poll_message = await bot.send_poll(
             chat_id=chat_id,
-            text=str(_("Ушбу савол жавоби 10 та жавобдан коп! Админ билан богланинг"))
+            question=question.text,
+            options=options,
+            is_anonymous=False,
+            allows_multiple_answers=allows_multiple_answers
         )
-        return
-    poll_message = await bot.send_poll(
-        chat_id=chat_id,
-        question=question.text,
-        options=options,
-        is_anonymous=False,
-        allows_multiple_answers=allows_multiple_answers
-    )
 
-    # Создаём или обновляем Answer с telegram_poll_id
-    answer, created = await Answer.objects.aupdate_or_create(
-        respondent=respondent,
-        question=question,
-        defaults={"telegram_poll_id": poll_message.poll.id,
-                  "telegram_msg_id": poll_message.message_id,
-                  "telegram_chat_id": poll_message.chat.id
-                  }
-    )
-    await sync_to_async(lambda: answer.question)()
-    await sync_to_async(lambda: answer.respondent)()
+        # Создаём или обновляем Answer с telegram_poll_id
+        answer, created = await Answer.objects.aupdate_or_create(
+            respondent=respondent,
+            question=question,
+            defaults={"telegram_poll_id": poll_message.poll.id,
+                      "telegram_msg_id": poll_message.message_id,
+                      "telegram_chat_id": poll_message.chat.id
+                      }
+        )
+        await sync_to_async(lambda: answer.question)()
+        await sync_to_async(lambda: answer.respondent)()
 
 
 async def async_get_or_create_user(defaults=None, **kwargs):
