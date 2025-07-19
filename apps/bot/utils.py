@@ -42,7 +42,7 @@ async def poll_checker(bot, chat_id, question, options):
             await bot.send_message(
                 chat_id=chat_id,
                 text=(
-                    question.text + "\n\n" + str(_(
+                    question.text + "\n\n" + opt + "\n\n" + str(_(
                     "Жавоб вариантларидан бири 100 белгидан узун. Админ билан боғланинг."
                 ))
                 )
