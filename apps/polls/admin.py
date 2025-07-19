@@ -42,7 +42,8 @@ class PollAdmin(MarkdownxModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('text', 'type', 'poll', 'order')
+    list_display = ('text', 'type', 'poll', 'max_choices', 'order')
+    list_editable = ('order', 'max_choices')
     inlines = [ChoiceInline]
     list_filter = ('poll', 'type')
 

@@ -101,18 +101,42 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
                                              message_id=unfinished_answer.telegram_msg_id)
         await get_current_question(poll_answer.bot, poll_answer.user.id, state, user)
         return
-    selected_index = poll_answer.option_ids[0]
+    selected_indexes = poll_answer.option_ids
+    max_choices = answer.question.max_choices or 0
+
+    if answer.question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE and max_choices > 0:
+        if len(selected_indexes) > max_choices:
+            # 🛑 Удаляем сообщение с poll
+            await poll_answer.bot.delete_message(chat_id=answer.telegram_chat_id,
+                                                 message_id=answer.telegram_msg_id)
+
+            # 🔄 Повторно отправляем вопрос с предупреждением
+            choices = await sync_to_async(list)(answer.question.choices.all().order_by("order"))
+            options = [choice.text for choice in choices]
+
+            poll_message = await poll_answer.bot.send_poll(
+                chat_id=answer.telegram_chat_id,
+                question=answer.question.text + f"\n⚠️ Иложи борича энг кўпи билан {max_choices} та жавобни танланг.",
+                options=options,
+                is_anonymous=False,
+                allows_multiple_answers=True
+            )
+
+            # 🔄 Обновляем answer с новым poll_id и message_id
+            answer.telegram_poll_id = poll_message.poll.id
+            answer.telegram_msg_id = poll_message.message_id
+            answer.telegram_chat_id = poll_message.chat.id
+            await answer.asave()
+            return
 
     # Загружаем варианты
-    choices = await sync_to_async(list)(
-        answer.question.choices.all().order_by("order")
-    )
+    choices = await sync_to_async(list)(answer.question.choices.all().order_by("order"))
+    selected_choice_objs = [choices[i] for i in selected_indexes if i < len(choices)]
 
     is_mixed = answer.question.type == Question.QuestionTypeChoices.MIXED
 
     if is_mixed and selected_index == len(choices):
         # Выбран вариант "Бошқа"
-        print("IS MIXED")
         await state.update_data(
             answer_id=answer.id,
             respondent_id=answer.respondent_id,
@@ -132,11 +156,36 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
         print("❌ Неверный индекс опции")
         return
 
-    await answer.selected_choices.aadd(selected_choice)
+    await answer.selected_choices.set(selected_choice_objs)
     answer.is_answered = True
     await answer.asave()
 
-    print(f"✅ User {answer.respondent.tg_user_id} выбрал: {selected_choice.text}")
+    # ✅ Подтверждение ответа + % выполнения
+    total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
+    answered_count = await sync_to_async(
+        lambda: Answer.objects.filter(respondent=answer.respondent, is_answered=True).count())()
+    progress = int((answered_count / total_questions) * 100)
+
+    # 🧾 Собираем текст ответа (один или несколько)
+    if answer.question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE:
+        selected_choices = await sync_to_async(list)(answer.selected_choices.all())
+        selected_text = "\n".join([f"• {choice.text}" for choice in selected_choices])
+    else:
+        selected_text = f"• {selected_choice.text}"
+
+    # 💬 Формируем текст подтверждения
+    confirmation_text = (
+        f"<b>{answer.question.text}</b>\n\n"
+        f"✅ Сиз танлаган жавоб(лар):\n{selected_text}\n\n"
+        f"📊 Сўровнома якунланиши: <b>{progress}%</b>"
+    )
+
+    await poll_answer.bot.send_message(
+        chat_id=answer.telegram_chat_id,
+        text=confirmation_text,
+        parse_mode="HTML"
+    )
+
     await poll_answer.bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
     # Следующий вопрос
     await get_next_question(poll_answer.bot, poll_answer.user.id, state, answer.respondent,
