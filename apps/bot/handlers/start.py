@@ -8,7 +8,6 @@ from aiogram.types import Message, PollAnswer
 from asgiref.sync import sync_to_async
 from django.utils.translation import gettext_lazy as _
 
-from apps.bot.handlers.start import safe_delete_or_edit  # если ещё не импортировано
 from apps.bot.states import PollStates
 from apps.bot.utils import get_current_question, get_next_question
 from apps.polls.models import Answer, Question, Respondent, Poll
