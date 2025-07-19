@@ -173,7 +173,7 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
         print("❌ Неверный индекс опции")
         return
 
-    await answer.selected_choices.set(selected_choice_objs)
+    await sync_to_async(answer.selected_choices.set)(selected_choice_objs)
     answer.is_answered = True
     await answer.asave()
 
