@@ -107,7 +107,7 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
         return
 
     if not respondent.history:
-        await bot.send_message(chat_id, str(poll.description))
+        await bot.send_message(chat_id, str(respondent.poll.description))
 
     updated_history = previous_questions + [question_id]
     respondent.history = updated_history

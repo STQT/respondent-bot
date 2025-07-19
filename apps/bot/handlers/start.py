@@ -216,7 +216,7 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
     answer_id = data.get("answer_id")
 
     try:
-        answer = await Answer.objects.select_related("respondent").aget(id=answer_id)
+        answer = await Answer.objects.select_related("respondent__poll").aget(id=answer_id)
     except Answer.DoesNotExist:
         await message.answer("❌ Жавобни сақлашда хато юз берди.")
         return
