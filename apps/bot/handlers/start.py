@@ -16,19 +16,16 @@ from apps.users.models import TGUser
 start_router = Router()
 
 
-async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
-    """
-    Безопасно удаляет или редактирует сообщение.
-    Если текст указан — редактирует, иначе удаляет.
-    """
+async def safe_edit_text(message: Message, text: str, reply_markup: InlineKeyboardMarkup | None = None):
     try:
-        if text is not None:
+        if message.text != text:
             await message.edit_text(text, reply_markup=reply_markup)
+        elif message.reply_markup != reply_markup:
+            await message.edit_reply_markup(reply_markup=reply_markup)
         else:
-            await message.delete()
-    except Exception as e:
-        print(f"⚠️ safe_delete_or_edit error: {e}")
-
+            print("ℹ️ Пропущено редактирование: текст и кнопки не изменились.")
+    except TelegramBadRequest as e:
+        print(f"⚠️ Ошибка при редактировании сообщения: {e}")
 
 @start_router.message(CommandStart(deep_link=True))
 async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
@@ -80,7 +77,7 @@ async def poll_callback_handler(callback, state: FSMContext, user: TGUser | None
         return
 
     if action == "poll_continue":
-        await callback.message.edit_text(str(_("Сўровнома давом этилди.")))
+        await safe_edit_text(callback.message, str(_("Сўровнома давом этилди.")))
         await get_current_question(callback.bot, callback.from_user.id, state, user, poll_uuid=poll_uuid)
     elif action == "poll_restart":
         # ❗ Удаляем старого респондента и его ответы
