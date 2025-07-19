@@ -27,6 +27,19 @@ async def safe_edit_text(message: Message, text: str, reply_markup: InlineKeyboa
     except TelegramBadRequest as e:
         print(f"⚠️ Ошибка при редактировании сообщения: {e}")
 
+async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
+    """
+    Безопасно удаляет или редактирует сообщение.
+    Если текст указан — редактирует, иначе удаляет.
+    """
+    try:
+        if text is not None:
+            await message.edit_text(text, reply_markup=reply_markup)
+        else:
+            await message.delete()
+    except Exception as e:
+        print(f"⚠️ safe_delete_or_edit error: {e}")
+
 @start_router.message(CommandStart(deep_link=True))
 async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
     poll_uuid = None
