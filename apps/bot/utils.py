@@ -165,6 +165,7 @@ async def show_multiselect_question(message, choice_map, selected_choices, quest
     markup = get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_button)
     await message.answer(msg_text, reply_markup=markup)
 
+
 async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=None):
     active_polls = Poll.objects.filter(deadline__gte=timezone.now())
     if not await active_polls.aexists():
@@ -206,15 +207,7 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
         respondent=respondent,
         is_answered=False,
         telegram_msg_id__isnull=False
-    ).order_by("id").afirst()
-
-    if unfinished_answer is None:
-        await bot.send_message(chat_id, str(_("❌ Жавоб берилмаган савол топилмади. Сўровнома янгидан бошланди.")))
-        # тут можно заново запустить опрос или завершить
-        return
-    # 🛠 Подгрузи вручную:
-    await sync_to_async(lambda: unfinished_answer.question)()
-    await sync_to_async(lambda: unfinished_answer.question.poll)()
+    ).select_related("question", "question__poll").order_by("id").afirst()
 
     if unfinished_answer:
         await state.update_data(respondent_id=respondent.id)
@@ -223,6 +216,7 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
         )
         return
 
+    # ➕ Попробовать найти следующий неотвеченный вопрос
     questions = await sync_to_async(lambda: poll.questions.all())()
     answered_ids = await sync_to_async(list)(
         Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
@@ -235,6 +229,7 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
         await bot.send_message(chat_id, str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
         return
 
+    # ✅ Запускаем первый вопрос
     await state.update_data(respondent_id=respondent.id)
     await get_next_question(bot, chat_id, state, respondent, respondent.history, next_question.id)
     await state.set_state(PollStates.waiting_for_answer)
