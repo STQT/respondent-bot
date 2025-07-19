@@ -15,14 +15,14 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
     question_id = data.get("question_id")
 
     if not respondent_id or not question_id:
-        await message.answer(str(_("Сўровнома яроқсиз ҳолатда. Илтимос, /start орқали қайтадан бошланг.")))
+        await message.answer(str(_("Сўровнома яроқсиз ҳолатда. Илтимос, ҳавола орқали қайтадан бошланг.")))
         await state.clear()
         return
 
     try:
         respondent = await Respondent.objects.aget(id=respondent_id)
     except Respondent.DoesNotExist:
-        await message.answer(str(_("Сўровнома маълумотлари топилмади. Илтимос, /start орқали қайтадан бошланг.")))
+        await message.answer(str(_("Сўровнома маълумотлари топилмади. Илтимос, ҳавола орқали қайтадан бошланг.")))
         await state.clear()
         return
 
