@@ -8,12 +8,14 @@ from aiogram.types import Message, PollAnswer
 from asgiref.sync import sync_to_async
 from django.utils.translation import gettext_lazy as _
 
+from apps.bot.handlers.start import safe_delete_or_edit  # если ещё не импортировано
 from apps.bot.states import PollStates
 from apps.bot.utils import get_current_question, get_next_question
 from apps.polls.models import Answer, Question, Respondent, Poll
 from apps.users.models import TGUser
 
 start_router = Router()
+
 
 async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
     """
@@ -203,7 +205,10 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
         parse_mode="HTML"
     )
 
-    await poll_answer.bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
+    try:
+        await poll_answer.bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
+    except Exception as e:
+        print(f"⚠️ Не удалось удалить poll: {e}")
     # Следующий вопрос
     await get_next_question(poll_answer.bot, poll_answer.user.id, state, answer.respondent,
                             answer.respondent.history, answer.question_id)
