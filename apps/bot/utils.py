@@ -37,7 +37,7 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
         answer = await Answer.objects.filter(
             respondent=respondent,
             question=question
-        ).aselect_related("respondent", "question").afirst()
+        ).select_related("respondent", "question").afirst()
         if not answer:
             answer = await Answer.objects.acreate(
                 respondent=respondent,
