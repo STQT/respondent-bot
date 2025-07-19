@@ -44,6 +44,8 @@ async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
 
 @start_router.message(CommandStart(deep_link=True))
 async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
+    await state.clear()  # ✅ Всегда сбрасываем состояние
+
     poll_uuid = None
     if command.args and command.args.startswith("poll_"):
         poll_uuid = command.args.removeprefix("poll_")
@@ -78,9 +80,7 @@ async def command_start_handler(message: Message, state: FSMContext, user: TGUse
             # ✳️ Первый раз — сразу запустить
             await get_current_question(message.bot, message.from_user.id, state, user, poll_uuid=poll_uuid)
     else:
-        # Стандартный сценарий
         await message.answer(str(_("Саволномадан отиш учун линкдан фойдаланинг")))
-
 
 @start_router.callback_query(lambda c: c.data.startswith("poll_"))
 async def poll_callback_handler(callback, state: FSMContext, user: TGUser | None):
