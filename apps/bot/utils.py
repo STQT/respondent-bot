@@ -34,10 +34,15 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
         )
 
         # Создаём пустой Answer для отслеживания
-        answer, _ = await Answer.objects.aget_or_create(
+        answer = await Answer.objects.filter(
             respondent=respondent,
             question=question
-        )
+        ).aselect_related("respondent", "question").afirst()
+        if not answer:
+            answer = await Answer.objects.acreate(
+                respondent=respondent,
+                question=question
+            )
 
         # Обновляем состояние FSM, чтобы ждать текстовый ответ
         await state.update_data(
@@ -69,6 +74,8 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
                   "telegram_chat_id": poll_message.chat.id
                   }
     )
+    await sync_to_async(lambda: answer.question)()
+    await sync_to_async(lambda: answer.respondent)()
 
 
 async def async_get_or_create_user(defaults=None, **kwargs):
@@ -195,10 +202,13 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
     if not respondent:
         respondent = await Respondent.objects.acreate(tg_user=user, poll=poll)
 
-    unfinished_answer = await Answer.objects.select_related("question").filter(
+    unfinished_answer = await Answer.objects.filter(
         respondent=respondent,
         is_answered=False
     ).order_by("id").afirst()
+    # 🛠 Подгрузи вручную:
+    await sync_to_async(lambda: unfinished_answer.question)()
+    await sync_to_async(lambda: unfinished_answer.question.poll)()
 
     if unfinished_answer:
         await state.update_data(respondent_id=respondent.id)
