@@ -27,6 +27,7 @@ async def safe_edit_text(message: Message, text: str, reply_markup: InlineKeyboa
     except TelegramBadRequest as e:
         print(f"⚠️ Ошибка при редактировании сообщения: {e}")
 
+
 async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
     """
     Безопасно удаляет или редактирует сообщение.
@@ -39,6 +40,7 @@ async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
             await message.delete()
     except Exception as e:
         print(f"⚠️ safe_delete_or_edit error: {e}")
+
 
 @start_router.message(CommandStart(deep_link=True))
 async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
@@ -77,7 +79,7 @@ async def command_start_handler(message: Message, state: FSMContext, user: TGUse
             await get_current_question(message.bot, message.from_user.id, state, user, poll_uuid=poll_uuid)
     else:
         # Стандартный сценарий
-        await get_current_question(message.bot, message.from_user.id, state, user)
+        await message.answer(str(_("Саволномадан отиш учун линкдан фойдаланинг")))
 
 
 @start_router.callback_query(lambda c: c.data.startswith("poll_"))
