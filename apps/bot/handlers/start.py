@@ -137,6 +137,12 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
             # 🔄 Повторно отправляем вопрос с предупреждением
             choices = await sync_to_async(list)(answer.question.choices.all().order_by("order"))
             options = [choice.text for choice in choices]
+            if len(options) > 10:
+                await poll_answer.bot.send_message(
+                    chat_id=answer.telegram_chat_id,
+                    text=str(_("Ушбу савол жавоби 10 та жавобдан коп! Админ билан богланинг"))
+                )
+                return
 
             poll_message = await poll_answer.bot.send_poll(
                 chat_id=answer.telegram_chat_id,

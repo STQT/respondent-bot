@@ -57,6 +57,13 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
     options = [choice.text for choice in choices]
     if question.type == Question.QuestionTypeChoices.MIXED:
         options.append("📝 Бошқа")
+
+    if len(options) > 10:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=str(_("Ушбу савол жавоби 10 та жавобдан коп! Админ билан богланинг"))
+        )
+        return
     poll_message = await bot.send_poll(
         chat_id=chat_id,
         question=question.text,
