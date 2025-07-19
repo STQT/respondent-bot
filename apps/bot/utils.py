@@ -26,14 +26,14 @@ async def poll_checker(bot, chat_id, question, options):
     if len(question.text) > 255:
         await bot.send_message(
             chat_id=chat_id,
-            text=str(_("Савол матни жуда узун. Админ билан боғланинг."))
+            text=question.text + "\n\n" + str(_("Савол матни жуда узун. Админ билан боғланинг."))
         )
         return
 
     if len(options) > 10:
         await bot.send_message(
             chat_id=chat_id,
-            text=str(_("Ушбу савол жавоби 10 та жавобдан коп! Админ билан богланинг"))
+            text=question.text + "\n\n" + str(_("Ушбу савол жавоби 10 та жавобдан коп! Админ билан богланинг"))
         )
         return
 
@@ -41,10 +41,15 @@ async def poll_checker(bot, chat_id, question, options):
         if len(opt) > 100:
             await bot.send_message(
                 chat_id=chat_id,
-                text=str(_("Жавоб вариантларидан бири 100 белгидан узун. Админ билан боғланинг."))
+                text=(
+                    question.text + "\n\n" + str(_(
+                    "Жавоб вариантларидан бири 100 белгидан узун. Админ билан боғланинг."
+                ))
+                )
             )
             return
     return True
+
 
 async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, respondent: Respondent, question: Question):
     choices = await sync_to_async(list)(question.choices.all().order_by("order"))
@@ -259,4 +264,3 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
     await state.update_data(respondent_id=respondent.id)
     await get_next_question(bot, chat_id, state, respondent, respondent.history, next_question.id)
     await state.clear()
-
