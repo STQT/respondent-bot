@@ -72,14 +72,13 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
                 respondent=respondent,
                 question=question
             )
-
+        await state.set_state(PollStates.waiting_for_answer)
         # Обновляем состояние FSM, чтобы ждать текстовый ответ
         await state.update_data(
             question_id=question.id,
             respondent_id=respondent.id,
             answer_id=answer.id
         )
-        await state.set_state(PollStates.waiting_for_answer)
         return
 
     # 📊 Закрытый вопрос — отправим Telegram poll
