@@ -9,7 +9,7 @@ from asgiref.sync import sync_to_async
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
-from apps.bot.utils import get_current_question, get_next_question
+from apps.bot.utils import get_current_question, get_next_question, poll_checker
 from apps.polls.models import Answer, Question, Respondent, Poll
 from apps.users.models import TGUser
 
