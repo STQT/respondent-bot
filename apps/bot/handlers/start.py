@@ -47,40 +47,45 @@ async def command_start_handler(message: Message, state: FSMContext, user: TGUse
     await state.clear()  # ✅ Всегда сбрасываем состояние
 
     poll_uuid = None
-    if command.args and command.args.startswith("poll_"):
-        poll_uuid = command.args.removeprefix("poll_")
-
-    if poll_uuid:
-        poll = await Poll.objects.filter(uuid=poll_uuid, deadline__gte=timezone.now()).afirst()
-        if not poll:
-            await message.answer(str(_("Кечирасиз, ушбу сўровнома топилмади ёки муддати тугаган.")))
-            return
-
-        respondent = await Respondent.objects.filter(tg_user=user, poll=poll).afirst()
-
-        if respondent:
-            if respondent.finished_at:
-                # ✅ Уже прошел — предложить повторить
-                markup = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔁 Қайта бошлаш", callback_data=f"poll_restart:{poll.uuid}")]
-                ])
-                await message.answer(str(_("Сиз бу сўровномани аввал якунлагансиз.")), reply_markup=markup)
-            else:
-                # 🔁 Не окончен — предложить продолжить или начать заново
-                markup = InlineKeyboardMarkup(inline_keyboard=[
-                    [
-                        InlineKeyboardButton(text="🔄 Давом этиш", callback_data=f"poll_continue:{poll.uuid}"),
-                        InlineKeyboardButton(text="♻️ Қайта бошлаш", callback_data=f"poll_restart:{poll.uuid}")
-                    ]
-                ])
-                await message.answer(
-                    str(_("Сиз сўровномани тўлиқ якунламагансиз. Давом этасизми ёки қайта бошлайсизми?")),
-                    reply_markup=markup)
+    if command.args:
+        if command.args.startswith("poll_"):
+            poll_uuid = command.args.removeprefix("poll_")
         else:
-            # ✳️ Первый раз — сразу запустить
-            await get_current_question(message.bot, message.from_user.id, state, user, poll_uuid=poll_uuid)
-    else:
+            poll_uuid = None  # На всякий случай
+
+    if not poll_uuid:
         await message.answer(str(_("Саволномадан отиш учун линкдан фойдаланинг")))
+        return
+
+    poll = await Poll.objects.filter(uuid=poll_uuid, deadline__gte=timezone.now()).afirst()
+    if not poll:
+        await message.answer(str(_("Кечирасиз, ушбу сўровнома топилмади ёки муддати тугаган.")))
+        return
+
+    respondent = await Respondent.objects.filter(tg_user=user, poll=poll).afirst()
+
+    if respondent:
+        if respondent.finished_at:
+            # ✅ Уже прошел — предложить повторить
+            markup = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔁 Қайта бошлаш", callback_data=f"poll_restart:{poll.uuid}")]
+            ])
+            await message.answer(str(_("Сиз бу сўровномани аввал якунлагансиз.")), reply_markup=markup)
+        else:
+            # 🔁 Не окончен — предложить продолжить или начать заново
+            markup = InlineKeyboardMarkup(inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="🔄 Давом этиш", callback_data=f"poll_continue:{poll.uuid}"),
+                    InlineKeyboardButton(text="♻️ Қайта бошлаш", callback_data=f"poll_restart:{poll.uuid}")
+                ]
+            ])
+            await message.answer(
+                str(_("Сиз сўровномани тўлиқ якунламагансиз. Давом этасизми ёки қайта бошлайсизми?")),
+                reply_markup=markup)
+    else:
+        # ✳️ Первый раз — сразу запустить
+        await get_current_question(message.bot, message.from_user.id, state, user, poll_uuid=poll_uuid)
+
 
 @start_router.callback_query(lambda c: c.data.startswith("poll_"))
 async def poll_callback_handler(callback, state: FSMContext, user: TGUser | None):
