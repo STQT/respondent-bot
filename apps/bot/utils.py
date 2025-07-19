@@ -204,8 +204,14 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
 
     unfinished_answer = await Answer.objects.filter(
         respondent=respondent,
-        is_answered=False
+        is_answered=False,
+        telegram_msg_id__isnull=False
     ).order_by("id").afirst()
+
+    if unfinished_answer is None:
+        await bot.send_message(chat_id, _("❌ Жавоб берилмаган савол топилмади. Сўровнома янгидан бошланди."))
+        # тут можно заново запустить опрос или завершить
+        return
     # 🛠 Подгрузи вручную:
     await sync_to_async(lambda: unfinished_answer.question)()
     await sync_to_async(lambda: unfinished_answer.question.poll)()
