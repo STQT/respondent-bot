@@ -7,9 +7,7 @@ from django.conf import settings
 from django.urls import reverse
 from redis.asyncio import Redis
 
-from apps.bot.handlers.callback import callback_router
 from apps.bot.handlers.echo import echo_router
-from apps.bot.handlers.menu import menu_router
 from apps.bot.handlers.start import start_router
 from apps.bot.handlers.poll import poll_router
 from apps.bot.middlewares import UserInternalIdMiddleware
@@ -29,10 +27,8 @@ def register_all_misc() -> (Dispatcher, Bot):
     # Register all the routers from handlers package
     routers = (
         start_router,
-        menu_router,
         poll_router,
-        echo_router,
-        callback_router
+        echo_router
     )
     dp.include_routers(*routers)
     # Initialize Bot instance with default bot properties which will be passed to all API calls

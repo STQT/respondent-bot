@@ -8,6 +8,8 @@ from apps.polls.models import Respondent, Answer, Question
 from apps.users.models import TGUser
 
 poll_router = Router()
+
+
 @poll_router.message(PollStates.waiting_for_answer)
 async def process_custom_input(message: types.Message, state: FSMContext, user: TGUser):
     data = await state.get_data()
@@ -42,4 +44,4 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
         respondent.history,
         question_id
     )
-    await state.set_state(PollStates.waiting_for_answer)
+    await state.clear()

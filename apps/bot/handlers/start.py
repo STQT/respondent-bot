@@ -45,7 +45,6 @@ async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
 @start_router.message(CommandStart(deep_link=True))
 async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
     await state.clear()  # ✅ Всегда сбрасываем состояние
-
     poll_uuid = None
     if command.args:
         if command.args.startswith("poll_"):
@@ -254,3 +253,4 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
 
     await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
                             answer.question_id)
+    await state.clear()

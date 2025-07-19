@@ -132,7 +132,7 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
         previous_questions=updated_history
     )
     await send_poll_question(bot, chat_id, state, respondent, next_question)
-    await state.set_state(PollStates.waiting_for_answer)
+    await state.clear()
 
 
 async def render_question(message: Message, state: FSMContext, question: Question, previous_questions: list):
@@ -239,4 +239,5 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
     # ✅ Запускаем первый вопрос
     await state.update_data(respondent_id=respondent.id)
     await get_next_question(bot, chat_id, state, respondent, respondent.history, next_question.id)
-    await state.set_state(PollStates.waiting_for_answer)
+    await state.clear()
+
