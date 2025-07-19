@@ -164,7 +164,11 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
 
     # Обычный выбор — сохраняем выбранный вариант
     try:
-        selected_choice = choices[selected_index]
+        if selected_choice_objs:
+            selected_choice = selected_choice_objs[0]
+        else:
+            print("❌ Нет выбранных опций")
+            return
     except IndexError:
         print("❌ Неверный индекс опции")
         return
