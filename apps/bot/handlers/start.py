@@ -214,11 +214,18 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
     else:
         selected_text = f"• {selected_choice.text}"
 
+    def render_progress_bar(progress: int, total_blocks: int = 10) -> str:
+        filled_blocks = int((progress / 100) * total_blocks)
+        empty_blocks = total_blocks - filled_blocks
+        return "█" * filled_blocks + "░" * empty_blocks  # или ▓ и ░ для более мягкого стиля
+
+    progress_bar = render_progress_bar(progress)
+
     # 💬 Формируем текст подтверждения
     confirmation_text = (
         f"<b>{answer.question.text}</b>\n\n"
         f"✅ Сиз танлаган жавоб(лар):\n{selected_text}\n\n"
-        f"📊 Сўровнома якунланиши: <b>{progress}%</b>"
+        f"{progress_bar} <b>{progress}%</b>"
     )
 
     await poll_answer.bot.send_message(
