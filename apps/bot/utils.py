@@ -17,7 +17,7 @@ from apps.bot.states import PollStates
 from apps.polls.models import Poll, Respondent, Answer, Question
 from apps.users.models import TGUser
 
-ANOTHER_STR = str(_("📝 Бошқа"))
+ANOTHER_STR = str(_("Бошқа(ёзинг)__________"))
 BACK_STR = str(_("🔙 Ортга"))
 NEXT_STR = str(_("➡️ Кейинги савол"))
 
@@ -139,7 +139,15 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
     if not next_question:
         respondent.finished_at = timezone.now()
         await respondent.asave()
-        await bot.send_message(chat_id, str(_("Сиз сўровномани тўлиқ якунладингиз. Рахмат!")))
+        await bot.send_message(
+            chat_id,
+            str(_(
+                "Сиз сўровномани тўлиқ якунладингиз. Раҳмат!\n\n"
+                "Сизнинг фикрингиз биз учун жуда муҳим.\n"
+                "Иштирокингиз орқали муҳим ислоҳотлар ва қарорлар шакллантирилади.\n"
+                "Янги сўровларда ҳам фаол иштирок этишингизни кутамиз!"
+            ))
+        )
         await state.clear()
         return
 
