@@ -92,7 +92,8 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
             question=question.text,
             options=options,
             is_anonymous=False,
-            allows_multiple_answers=allows_multiple_answers
+            allows_multiple_answers=allows_multiple_answers,
+            protect_content=True
         )
 
         # Создаём или обновляем Answer с telegram_poll_id

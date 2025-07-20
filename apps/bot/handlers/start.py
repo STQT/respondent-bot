@@ -155,7 +155,8 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
                     question=answer.question.text + f"\n⚠️ Иложи борича энг кўпи билан {max_choices} та жавобни танланг.",
                     options=options,
                     is_anonymous=False,
-                    allows_multiple_answers=True
+                    allows_multiple_answers=True,
+                    protect_content=True
                 )
 
                 # 🔄 Обновляем answer с новым poll_id и message_id
