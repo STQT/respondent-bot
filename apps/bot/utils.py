@@ -133,7 +133,7 @@ async def async_get_or_create_user(defaults=None, **kwargs):
 
 
 async def get_next_question(bot, chat_id, state: FSMContext, respondent, previous_questions, question_id):
-    all_questions = await sync_to_async(lambda: respondent.poll.questions.all())()
+    all_questions = await sync_to_async(lambda: respondent.poll.questions.order_by("order"))()
     answered_ids = await sync_to_async(list)(
         Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
     )
@@ -219,7 +219,7 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
         return
 
     # ➕ Попробовать найти следующий неотвеченный вопрос
-    questions = await sync_to_async(lambda: poll.questions.all())()
+    questions = await sync_to_async(lambda: poll.questions.order_by("order"))()
     answered_ids = await sync_to_async(list)(
         Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)
     )
