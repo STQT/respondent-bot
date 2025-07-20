@@ -253,4 +253,3 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
 
     await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
                             answer.question_id)
-    await state.clear()

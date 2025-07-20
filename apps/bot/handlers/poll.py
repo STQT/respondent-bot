@@ -9,7 +9,6 @@ from apps.users.models import TGUser
 
 poll_router = Router()
 
-
 @poll_router.message(PollStates.waiting_for_answer)
 async def process_custom_input(message: types.Message, state: FSMContext, user: TGUser):
     data = await state.get_data()
@@ -30,11 +29,12 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
 
     current_question = await Question.objects.aget(id=question_id)
 
-    await Answer.objects.filter(respondent=respondent, question=current_question).adelete()
-    answer = await Answer.objects.acreate(respondent=respondent, question=current_question)
-    answer.open_answer = message.text.strip()
-    answer.is_answered = True
-    await answer.asave()
+    # 🔧 Заменили delete/create на update_or_create
+    answer, _ = await Answer.objects.aupdate_or_create(
+        respondent=respondent,
+        question=current_question,
+        defaults={"open_answer": message.text.strip(), "is_answered": True}
+    )
 
     await get_next_question(
         message.bot,
