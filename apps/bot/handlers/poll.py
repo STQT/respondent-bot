@@ -1,5 +1,6 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
+from aiogram.types import ReplyKeyboardRemove
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
@@ -35,7 +36,8 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
         question=current_question,
         defaults={"open_answer": message.text.strip(), "is_answered": True}
     )
-
+    await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
+    await state.clear()
     await get_next_question(
         message.bot,
         message.from_user.id,
@@ -44,4 +46,3 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
         respondent.history,
         question_id
     )
-    await state.clear()

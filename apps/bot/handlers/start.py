@@ -3,7 +3,7 @@ from django.utils import timezone
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.types import Message, PollAnswer
 from asgiref.sync import sync_to_async
 from django.utils.translation import gettext_lazy as _
@@ -257,7 +257,7 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
 
     answer.open_answer = message.text.strip()
     await answer.asave()
-    await message.answer("✅ Жавоб қабул қилинди!")
+    await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
 
     await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
                             answer.question_id)
