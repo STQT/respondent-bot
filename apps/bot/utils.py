@@ -84,7 +84,7 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
     # 📊 Закрытый вопрос — отправим Telegram poll
     options = [choice.text for choice in choices]
     if question.type == Question.QuestionTypeChoices.MIXED:
-        options.append("📝 Бошқа")
+        options.append(ANOTHER_STR)
 
     if await poll_checker(bot, chat_id, question, options) is True:
         poll_message = await bot.send_poll(
@@ -106,6 +106,8 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
         )
         await sync_to_async(lambda: answer.question)()
         await sync_to_async(lambda: answer.respondent)()
+
+    await state.clear()
 
 
 async def async_get_or_create_user(defaults=None, **kwargs):
@@ -163,45 +165,6 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
         previous_questions=updated_history
     )
     await send_poll_question(bot, chat_id, state, respondent, next_question)
-    await state.clear()
-
-
-async def render_question(message: Message, state: FSMContext, question: Question, previous_questions: list):
-    show_back_button = question.order != 1
-    if not show_back_button:
-        await message.answer(str(question.poll.description))
-
-    await state.update_data(question_id=question.id, previous_questions=previous_questions)
-
-    choices = await sync_to_async(list)(question.choices.all().order_by("order"))
-    choice_map = {str(idx): choice.id for idx, choice in enumerate(choices, start=1)}
-    await state.update_data(choice_map=choice_map)
-
-    if question.type in [
-        Question.QuestionTypeChoices.CLOSED_SINGLE,
-        Question.QuestionTypeChoices.MIXED
-    ]:
-        msg_text = render_question_inline_text(question, choices)
-        markup = get_inline_keyboards_markup(question, choices, show_back_button)
-        await message.answer(msg_text, reply_markup=markup)
-    elif question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE:
-        selected_choices = []
-        await state.update_data(selected_choices=selected_choices)
-        msg_text = render_multiselect_inline_text(question.text, choice_map, selected_choices)
-        markup = get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_button)
-        await message.answer(msg_text, reply_markup=markup)
-    else:
-        await message.answer(
-            str(question.text) + "\n\n" +
-            str(_("Жавобингизни ёзинг ✍️")
-                ), reply_markup=ReplyKeyboardRemove())
-
-
-async def show_multiselect_question(message, choice_map, selected_choices, question_text="Номалум савол",
-                                    show_back_button=True):
-    msg_text = render_multiselect_inline_text(question_text, choice_map, selected_choices)
-    markup = get_inline_multiselect_keyboard(choice_map, selected_choices, show_back_button)
-    await message.answer(msg_text, reply_markup=markup)
 
 
 async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=None):
@@ -270,4 +233,3 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
     # ✅ Запускаем первый вопрос
     await state.update_data(respondent_id=respondent.id)
     await get_next_question(bot, chat_id, state, respondent, respondent.history, next_question.id)
-    await state.clear()
