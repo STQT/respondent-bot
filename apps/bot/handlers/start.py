@@ -1,3 +1,4 @@
+from aiogram.enums import ChatAction
 from django.utils import timezone
 
 from aiogram import Router
@@ -44,6 +45,8 @@ async def safe_delete_or_edit(message, text: str = None, reply_markup=None):
 
 @start_router.message(CommandStart(deep_link=True))
 async def command_start_handler(message: Message, state: FSMContext, user: TGUser | None, command):
+    await message.bot.send_chat_action(message.from_user.id, action=ChatAction.TYPING)
+
     await state.clear()  # ✅ Всегда сбрасываем состояние
     poll_uuid = None
     if command.args:
@@ -109,7 +112,7 @@ async def poll_callback_handler(callback, state: FSMContext, user: TGUser | None
 
 @start_router.poll_answer()
 async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: TGUser | None):
-    print("WORKING")
+    await poll_answer.bot.send_chat_action(poll_answer.user.id, action=ChatAction.TYPING)
     telegram_poll_id = poll_answer.poll_id
 
     try:
@@ -245,7 +248,8 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
 
 @start_router.message(PollStates.waiting_for_mixed_custom_input)
 async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
-    print("HANDLING")
+    await message.bot.send_chat_action(message.from_user.id, action=ChatAction.TYPING)
+
     data = await state.get_data()
     answer_id = data.get("answer_id")
 

@@ -1,7 +1,6 @@
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
-from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
 from apps.bot.utils import get_next_question

@@ -1,18 +1,11 @@
 from aiogram import Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, ReplyKeyboardRemove
 from asgiref.sync import sync_to_async
 from django.db import IntegrityError
 from django.db.models import OuterRef, Exists
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from apps.bot.inline_keyboards import (
-    get_inline_keyboards_markup,
-    get_inline_multiselect_keyboard,
-    render_question_inline_text,
-    render_multiselect_inline_text
-)
 from apps.bot.states import PollStates
 from apps.polls.models import Poll, Respondent, Answer, Question
 from apps.users.models import TGUser
