@@ -164,7 +164,7 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
         await bot.send_message(
             chat_id,
             str(respondent.poll.description),
-            parse_mode="MarkdownV2"
+            parse_mode="Markdown"
         )
 
     updated_history = previous_questions + [question_id]
