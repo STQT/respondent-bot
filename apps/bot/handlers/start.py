@@ -232,6 +232,7 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
 
     answer.open_answer = message.text.strip()
     await answer.asave()
+    await send_confirmation_text(message.bot, answer)
     await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
 
     await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
