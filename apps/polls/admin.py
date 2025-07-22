@@ -29,7 +29,7 @@ class QuestionInline(admin.StackedInline):
 
 
 @admin.register(Poll)
-class PollAdmin(MarkdownxModelAdmin):
+class PollAdmin(admin.ModelAdmin):
     list_display = ('name', 'uuid', 'deadline', 'is_active_status')
     inlines = [QuestionInline]
 
