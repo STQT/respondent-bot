@@ -30,14 +30,14 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
         return
 
     current_question = await Question.objects.aget(id=question_id)
-
+    open_answer = message.text.strip()
     # 🔧 Заменили delete/create на update_or_create
     answer, _updated = await Answer.objects.aupdate_or_create(
         respondent=respondent,
         question=current_question,
-        defaults={"open_answer": message.text.strip(), "is_answered": True}
+        defaults={"open_answer": open_answer, "is_answered": True}
     )
-    await send_confirmation_text(message.bot, answer)
+    await send_confirmation_text(message.bot, answer, open_answer)
     await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
     await state.clear()
     await get_next_question(

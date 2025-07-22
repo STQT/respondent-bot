@@ -229,10 +229,10 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
     except Answer.DoesNotExist:
         await message.answer("❌ Жавобни сақлашда хато юз берди.")
         return
-
-    answer.open_answer = message.text.strip()
+    open_answer = message.text.strip()
+    answer.open_answer = open_answer
     await answer.asave()
-    await send_confirmation_text(message.bot, answer)
+    await send_confirmation_text(message.bot, answer, open_answer)
     await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
 
     await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,

@@ -249,7 +249,7 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
     await get_next_question(bot, chat_id, state, respondent, respondent.history, next_question.id)
 
 
-async def send_confirmation_text(bot, answer):
+async def send_confirmation_text(bot, answer, open_answer=None):
     # ✅ Подтверждение ответа + % выполнения
     total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
     answered_count = await sync_to_async(
@@ -265,8 +265,8 @@ async def send_confirmation_text(bot, answer):
     else:
         selected_choices = await sync_to_async(list)(answer.selected_choices.all())
         selected_text = ""
-        if answer.open_answer:
-            selected_text += f"• {answer.open_answer}\n"
+        if open_answer:
+            selected_text += f"• {open_answer}\n"
         if selected_choices:
             selected_text += f"• {selected_choices[0].text}"
 
