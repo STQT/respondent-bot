@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
-from apps.bot.utils import get_current_question, get_next_question, poll_checker
+from apps.bot.utils import get_current_question, get_next_question, poll_checker, ANOTHER_STR
 from apps.polls.models import Answer, Question, Respondent, Poll
 from apps.users.models import TGUser
 
@@ -137,7 +137,10 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
     selected_indexes = poll_answer.option_ids
     max_choices = answer.question.max_choices or 0
 
-    if answer.question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE and max_choices > 0:
+    if answer.question.type in (
+        Question.QuestionTypeChoices.CLOSED_MULTIPLE,
+        Question.QuestionTypeChoices.MIXED_MULTIPLE,
+    ) and max_choices > 0:
         if len(selected_indexes) > max_choices:
             # 🛑 Удаляем сообщение с poll
             await poll_answer.bot.delete_message(chat_id=answer.telegram_chat_id,
@@ -146,6 +149,10 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
             # 🔄 Повторно отправляем вопрос с предупреждением
             choices = await sync_to_async(list)(answer.question.choices.all().order_by("order"))
             options = [choice.text for choice in choices]
+
+            if answer.question.type == Question.QuestionTypeChoices.MIXED_MULTIPLE:
+                options.append(ANOTHER_STR)
+
             if len(options) > 10:
                 await poll_answer.bot.send_message(
                     chat_id=answer.telegram_chat_id,

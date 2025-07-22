@@ -56,7 +56,10 @@ async def poll_checker(bot, chat_id, question, options):
 
 async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, respondent: Respondent, question: Question):
     choices = await sync_to_async(list)(question.choices.all().order_by("order"))
-    allows_multiple_answers = question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE
+    allows_multiple_answers = question.type in (
+        Question.QuestionTypeChoices.CLOSED_MULTIPLE,
+        Question.QuestionTypeChoices.MIXED_MULTIPLE
+    )
 
     # 💬 Открытый или смешанный вопрос — отправим текст
     if question.type == Question.QuestionTypeChoices.OPEN:
