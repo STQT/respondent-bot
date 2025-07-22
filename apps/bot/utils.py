@@ -1,3 +1,5 @@
+import re
+
 from aiogram import Bot
 from aiogram.fsm.context import FSMContext
 from asgiref.sync import sync_to_async
@@ -13,6 +15,14 @@ from apps.users.models import TGUser
 ANOTHER_STR = str(_("Бошқа(ёзинг)__________"))
 BACK_STR = str(_("🔙 Ортга"))
 NEXT_STR = str(_("➡️ Кейинги савол"))
+
+
+def escape_markdown_v2(text: str) -> str:
+    """
+    Экранирует специальные символы MarkdownV2.
+    """
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
 
 
 async def poll_checker(bot, chat_id, question, options):
@@ -151,7 +161,11 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
         return
 
     if not respondent.history:
-        await bot.send_message(chat_id, str(respondent.poll.description), parse_mode="MarkdownV2")
+        await bot.send_message(
+            chat_id,
+            escape_markdown_v2(str(respondent.poll.description)),
+            parse_mode="MarkdownV2"
+        )
 
     updated_history = previous_questions + [question_id]
     respondent.history = updated_history

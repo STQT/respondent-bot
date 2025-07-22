@@ -1,3 +1,4 @@
+from django.utils.translation import gettext_lazy as _
 from aiogram import Router, types
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
@@ -8,6 +9,7 @@ from apps.polls.models import Respondent, Answer, Question
 from apps.users.models import TGUser
 
 poll_router = Router()
+
 
 @poll_router.message(PollStates.waiting_for_answer)
 async def process_custom_input(message: types.Message, state: FSMContext, user: TGUser):
@@ -30,7 +32,7 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
     current_question = await Question.objects.aget(id=question_id)
 
     # 🔧 Заменили delete/create на update_or_create
-    answer, _ = await Answer.objects.aupdate_or_create(
+    answer, _updated = await Answer.objects.aupdate_or_create(
         respondent=respondent,
         question=current_question,
         defaults={"open_answer": message.text.strip(), "is_answered": True}

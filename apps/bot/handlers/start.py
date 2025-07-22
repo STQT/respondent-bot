@@ -1,12 +1,12 @@
-from aiogram.enums import ChatAction
-from django.utils import timezone
-
 from aiogram import Router
+from aiogram.enums import ChatAction
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.types import Message, PollAnswer
 from asgiref.sync import sync_to_async
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
