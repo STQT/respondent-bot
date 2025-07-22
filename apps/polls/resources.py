@@ -2,7 +2,7 @@ from django.utils import timezone
 from import_export.fields import Field
 from import_export.resources import ModelResource
 
-from apps.polls.models import Respondent
+from apps.polls.models import Respondent, Question
 
 
 class RespondentExportResource(ModelResource):
@@ -87,10 +87,24 @@ class RespondentExportResource(ModelResource):
             answer = answers_map.get(question_id)
             if not answer:
                 row[field_name] = ""
-            elif answer.open_answer:
-                row[field_name] = answer.open_answer.strip()
+                continue
+
+            question = answer.question  # уже закеширован в prefetch
+            selected = answer.selected_choices.all().order_by("order")
+            selected_numbers = ", ".join(str(choice.order) for choice in selected)
+
+            if question.type == Question.QuestionTypeChoices.MIXED_MULTIPLE:
+                # Для MIXED_MULTIPLE — выводим: номера вариантов + открытый ответ
+                parts = []
+                if selected_numbers:
+                    parts.append(selected_numbers)
+                if answer.open_answer:
+                    parts.append(answer.open_answer.strip())
+                row[field_name] = " | ".join(parts)
             else:
-                selected = answer.selected_choices.all().order_by("order")
-                row[field_name] = ", ".join(str(c.order) for c in selected)
+                if answer.open_answer:
+                    row[field_name] = answer.open_answer.strip()
+                else:
+                    row[field_name] = selected_numbers
 
         return row
