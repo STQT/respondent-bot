@@ -6,9 +6,13 @@
   <component name="ChangeListManager">
     <list default="true" id="eb3e88e8-2315-4da4-a27f-07aa9132c00a" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/bot/handlers/poll.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/bot/handlers/poll.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/bot/handlers/start.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/bot/handlers/start.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/bot/handlers/echo.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/bot/handlers/echo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/bot/inline_keyboards.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/bot/keyboards/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/bot/keyboards/inline.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/bot/keyboards/markups.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/bot/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/bot/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/polls/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/polls/models.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

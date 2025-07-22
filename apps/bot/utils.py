@@ -76,7 +76,10 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
 
     # 📊 Закрытый вопрос — отправим Telegram poll
     options = [choice.text for choice in choices]
-    if question.type == Question.QuestionTypeChoices.MIXED:
+    if question.type in [
+        Question.QuestionTypeChoices.MIXED,
+        Question.QuestionTypeChoices.MIXED_MULTIPLE
+    ]:
         options.append(ANOTHER_STR)
 
     if await poll_checker(bot, chat_id, question, options) is True:
@@ -148,7 +151,7 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
         return
 
     if not respondent.history:
-        await bot.send_message(chat_id, str(respondent.poll.description))
+        await bot.send_message(chat_id, str(respondent.poll.description), parse_mode="MarkdownV2")
 
     updated_history = previous_questions + [question_id]
     respondent.history = updated_history

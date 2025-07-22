@@ -33,6 +33,7 @@ class Question(models.Model):
         CLOSED_MULTIPLE = "closed_multiple", _("Закрытый — несколько ответов")
         OPEN = "open", _("Открытый")
         MIXED = "mixed", _("Смешанный")
+        MIXED_MULTIPLE = "mixed_multiple", _("Смешанный — несколько ответов")
 
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField()

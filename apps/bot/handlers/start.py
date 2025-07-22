@@ -173,10 +173,21 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
     choices = await sync_to_async(list)(answer.question.choices.all().order_by("order"))
     selected_choice_objs = [choices[i] for i in selected_indexes if i < len(choices)]
 
-    is_mixed = answer.question.type == Question.QuestionTypeChoices.MIXED
+    is_mixed = answer.question.type in [
+        Question.QuestionTypeChoices.MIXED,
+        Question.QuestionTypeChoices.MIXED_MULTIPLE
+    ]
 
-    if is_mixed and len(selected_indexes) == 1 and selected_indexes[0] == len(choices):
-        # Выбран вариант "Бошқа"
+    is_boshqa_selected = len(choices) in selected_indexes
+    if is_mixed and is_boshqa_selected:
+        selected_indexes = [i for i in selected_indexes if i != len(choices)]
+        selected_choice_objs = [choices[i] for i in selected_indexes if i < len(choices)]
+
+        # сохраняем выбранные до "Бошқа"
+        await sync_to_async(answer.selected_choices.set)(selected_choice_objs)
+        answer.is_answered = False
+        await answer.asave()
+
         await state.update_data(
             answer_id=answer.id,
             respondent_id=answer.respondent_id,

@@ -18,4 +18,4 @@ async def echo_handler(message: Message, state: FSMContext, user: TGUser | None)
     """
     # with override(user.lang):
     # await get_current_question(message, state, user)
-    await message.answer("HELLO")
+    await message.answer("Уникал хавола оркали ботга киринг! Ва соровномада катнашинг")
