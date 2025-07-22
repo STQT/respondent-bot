@@ -163,7 +163,7 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
     if not respondent.history:
         await bot.send_message(
             chat_id,
-            escape_markdown_v2(str(respondent.poll.description)),
+            str(respondent.poll.description),
             parse_mode="MarkdownV2"
         )
 
