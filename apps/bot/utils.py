@@ -247,3 +247,52 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
     # ✅ Запускаем первый вопрос
     await state.update_data(respondent_id=respondent.id)
     await get_next_question(bot, chat_id, state, respondent, respondent.history, next_question.id)
+
+
+async def send_confirmation_text(bot, answer):
+    # ✅ Подтверждение ответа + % выполнения
+    total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
+    answered_count = await sync_to_async(
+        lambda: Answer.objects.filter(respondent=answer.respondent, is_answered=True).count())()
+    progress = int((answered_count / total_questions) * 100)
+    # 🧾 Собираем текст ответа (один или несколько)
+    if answer.question.type in (
+            Question.QuestionTypeChoices.CLOSED_MULTIPLE,
+            Question.QuestionTypeChoices.MIXED_MULTIPLE
+    ):
+        selected_choices = await sync_to_async(list)(answer.selected_choices.all())
+        selected_text = "\n".join([f"• {choice.text}" for choice in selected_choices])
+    else:
+        selected_choices = await sync_to_async(list)(answer.selected_choices.all())
+        selected_text = ""
+        if answer.open_answer:
+            selected_text += f"• {answer.open_answer}\n"
+        if selected_choices:
+            selected_text += f"• {selected_choices[0].text}"
+
+
+
+    def render_progress_bar(progress: int, total_blocks: int = 10) -> str:
+        filled_blocks = int((progress / 100) * total_blocks)
+        empty_blocks = total_blocks - filled_blocks
+        return "█" * filled_blocks + "░" * empty_blocks  # или ▓ и ░ для более мягкого стиля
+
+    progress_bar = render_progress_bar(progress)
+
+    # 💬 Формируем текст подтверждения
+    confirmation_text = (
+        f"<b>{answer.question.text}</b>\n\n"
+        f"✅ Сиз танлаган жавоб(лар):\n{selected_text}\n\n"
+        f"{progress_bar} <b>{progress}%</b>"
+    )
+
+    await bot.send_message(
+        chat_id=answer.telegram_chat_id,
+        text=confirmation_text,
+        parse_mode="HTML"
+    )
+
+    try:
+        await bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
+    except Exception as e:
+        print(f"⚠️ Не удалось удалить poll: {e}")

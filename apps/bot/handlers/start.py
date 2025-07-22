@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.bot.states import PollStates
-from apps.bot.utils import get_current_question, get_next_question, poll_checker, ANOTHER_STR
+from apps.bot.utils import get_current_question, get_next_question, poll_checker, ANOTHER_STR, send_confirmation_text
 from apps.polls.models import Answer, Question, Respondent, Poll
 from apps.users.models import TGUser
 
@@ -207,58 +207,11 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
         await state.set_state(PollStates.waiting_for_mixed_custom_input)
         return
 
-    # Обычный выбор — сохраняем выбранный вариант
-    try:
-        if selected_choice_objs:
-            selected_choice = selected_choice_objs[0]
-        else:
-            print("❌ Нет выбранных опций")
-            return
-    except IndexError:
-        print("❌ Неверный индекс опции")
-        return
 
     await sync_to_async(answer.selected_choices.set)(selected_choice_objs)
     answer.is_answered = True
     await answer.asave()
-
-    # ✅ Подтверждение ответа + % выполнения
-    total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
-    answered_count = await sync_to_async(
-        lambda: Answer.objects.filter(respondent=answer.respondent, is_answered=True).count())()
-    progress = int((answered_count / total_questions) * 100)
-
-    # 🧾 Собираем текст ответа (один или несколько)
-    if answer.question.type == Question.QuestionTypeChoices.CLOSED_MULTIPLE:
-        selected_choices = await sync_to_async(list)(answer.selected_choices.all())
-        selected_text = "\n".join([f"• {choice.text}" for choice in selected_choices])
-    else:
-        selected_text = f"• {selected_choice.text}"
-
-    def render_progress_bar(progress: int, total_blocks: int = 10) -> str:
-        filled_blocks = int((progress / 100) * total_blocks)
-        empty_blocks = total_blocks - filled_blocks
-        return "█" * filled_blocks + "░" * empty_blocks  # или ▓ и ░ для более мягкого стиля
-
-    progress_bar = render_progress_bar(progress)
-
-    # 💬 Формируем текст подтверждения
-    confirmation_text = (
-        f"<b>{answer.question.text}</b>\n\n"
-        f"✅ Сиз танлаган жавоб(лар):\n{selected_text}\n\n"
-        f"{progress_bar} <b>{progress}%</b>"
-    )
-
-    await poll_answer.bot.send_message(
-        chat_id=answer.telegram_chat_id,
-        text=confirmation_text,
-        parse_mode="HTML"
-    )
-
-    try:
-        await poll_answer.bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
-    except Exception as e:
-        print(f"⚠️ Не удалось удалить poll: {e}")
+    await send_confirmation_text(poll_answer.bot, answer)
     # Следующий вопрос
     await get_next_question(poll_answer.bot, poll_answer.user.id, state, answer.respondent,
                             answer.respondent.history, answer.question_id)
