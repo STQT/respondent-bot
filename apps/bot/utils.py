@@ -265,12 +265,11 @@ async def send_confirmation_text(bot, answer, open_answer=None):
     else:
         selected_choices = await sync_to_async(list)(answer.selected_choices.all())
         selected_text = ""
-        if open_answer:
-            selected_text += f"• {open_answer}\n"
         if selected_choices:
             selected_text += f"• {selected_choices[0].text}"
 
-
+    if open_answer:
+        selected_text += f"• {open_answer}\n"
 
     def render_progress_bar(progress: int, total_blocks: int = 10) -> str:
         filled_blocks = int((progress / 100) * total_blocks)
