@@ -256,7 +256,8 @@ async def send_confirmation_text(bot, answer, open_answer=None):
         lambda: Answer.objects.filter(respondent=answer.respondent, is_answered=True).count())()
     progress = int((answered_count / total_questions) * 100)
     # 🧾 Собираем текст ответа (один или несколько)
-    if answer.question.type in (
+    question = await sync_to_async(lambda: answer.question)()
+    if question.type in (
             Question.QuestionTypeChoices.CLOSED_MULTIPLE,
             Question.QuestionTypeChoices.MIXED_MULTIPLE
     ):

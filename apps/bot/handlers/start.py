@@ -137,7 +137,8 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
     selected_indexes = poll_answer.option_ids
     max_choices = answer.question.max_choices or 0
 
-    if answer.question.type in (
+    question = await sync_to_async(lambda: answer.question)()
+    if question.type in (
         Question.QuestionTypeChoices.CLOSED_MULTIPLE,
         Question.QuestionTypeChoices.MIXED_MULTIPLE,
     ) and max_choices > 0:
