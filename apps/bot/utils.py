@@ -250,6 +250,9 @@ async def get_current_question(bot, chat_id, state: FSMContext, user, poll_uuid=
 
 
 async def send_confirmation_text(bot, answer, open_answer=None):
+    if not answer.telegram_chat_id:
+        print(f"❌ Ошибка: telegram_chat_id отсутствует для Answer ID={answer.id}")
+        return
     # ✅ Подтверждение ответа + % выполнения
     total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
     answered_count = await sync_to_async(

@@ -37,6 +37,10 @@ async def process_custom_input(message: types.Message, state: FSMContext, user: 
         question=current_question,
         defaults={"open_answer": open_answer, "is_answered": True}
     )
+    if not answer.telegram_chat_id:
+        answer.telegram_chat_id = message.chat.id
+        await answer.asave()
+
     await send_confirmation_text(message.bot, answer, open_answer)
     await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
     await state.clear()
