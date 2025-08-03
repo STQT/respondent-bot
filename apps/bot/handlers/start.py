@@ -1,11 +1,8 @@
-<<<<<<< HEAD
-=======
 from uuid import UUID
 
 from aiogram.enums import ChatAction
 from django.utils import timezone
 
->>>>>>> c37f8f2 (fix poll uuid)
 from aiogram import Router
 from aiogram.enums import ChatAction
 from aiogram.exceptions import TelegramBadRequest
