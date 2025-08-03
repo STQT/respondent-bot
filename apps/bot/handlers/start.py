@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+=======
+from uuid import UUID
+
+from aiogram.enums import ChatAction
+from django.utils import timezone
+
+>>>>>>> c37f8f2 (fix poll uuid)
 from aiogram import Router
 from aiogram.enums import ChatAction
 from aiogram.exceptions import TelegramBadRequest
@@ -48,14 +56,17 @@ async def command_start_handler(message: Message, state: FSMContext, user: TGUse
     await message.bot.send_chat_action(message.from_user.id, action=ChatAction.TYPING)
 
     await state.clear()  # ✅ Всегда сбрасываем состояние
-    poll_uuid = None
-    if command.args:
-        if command.args.startswith("poll_"):
-            poll_uuid = command.args.removeprefix("poll_")
-        else:
-            poll_uuid = None  # На всякий случай
+    if command.args and command.args.startswith("poll_"):
+        raw_uuid = command.args.removeprefix("poll_")
+        try:
+            # ✅ Проверка валидности UUID
+            poll_uuid = str(UUID(raw_uuid))
+        except ValueError:
+            poll_uuid = None
+    else:
+        poll_uuid = None
 
-    if not poll_uuid:
+    if poll_uuid is None:
         await message.answer(str(_("Саволномадан отиш учун линкдан фойдаланинг")))
         return
 

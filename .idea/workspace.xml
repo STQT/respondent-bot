@@ -6,8 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="eb3e88e8-2315-4da4-a27f-07aa9132c00a" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+<<<<<<< HEAD
       <change beforePath="$PROJECT_DIR$/apps/bot/handlers/poll.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/bot/handlers/poll.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/bot/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/bot/utils.py" afterDir="false" />
+=======
+      <change beforePath="$PROJECT_DIR$/apps/bot/handlers/start.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/bot/handlers/start.py" afterDir="false" />
+>>>>>>> c37f8f2 (fix poll uuid)
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,8 +88,13 @@
       <workItem from="1752578955414" duration="1433000" />
       <workItem from="1752989016371" duration="6777000" />
       <workItem from="1753017844733" duration="964000" />
+<<<<<<< HEAD
       <workItem from="1753204090576" duration="548000" />
       <workItem from="1753381582098" duration="719000" />
+=======
+      <workItem from="1753204090576" duration="802000" />
+      <workItem from="1754252281987" duration="695000" />
+>>>>>>> c37f8f2 (fix poll uuid)
     </task>
     <servers />
   </component>
