@@ -11,6 +11,7 @@ from apps.bot.handlers.echo import echo_router
 from apps.bot.handlers.start import start_router
 from apps.bot.handlers.poll import poll_router
 from apps.bot.middlewares import UserInternalIdMiddleware
+from apps.bot.middlewares import ForbiddenUserMiddleware
 
 
 def get_redis_storage():
@@ -24,6 +25,7 @@ def register_all_misc() -> (Dispatcher, Bot):
     # Dispatcher is a root router
     dp = Dispatcher(storage=memory_storage if settings.DEBUG else redis_storage)
     dp.update.outer_middleware(UserInternalIdMiddleware())
+    dp.update.outer_middleware(ForbiddenUserMiddleware())
     # Register all the routers from handlers package
     routers = (
         start_router,
