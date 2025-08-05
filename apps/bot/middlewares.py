@@ -1,3 +1,4 @@
+import logging
 from typing import Callable, Awaitable, Dict, Any
 
 from aiogram.dispatcher.middlewares.base import BaseMiddleware
@@ -6,6 +7,8 @@ from aiogram.types import TelegramObject
 
 from apps.bot.utils import async_get_or_create_user
 from apps.users.models import TGUser
+
+logger = logging.getLogger(__name__)
 
 
 class UserInternalIdMiddleware(BaseMiddleware):
@@ -46,4 +49,7 @@ class ForbiddenUserMiddleware(BaseMiddleware):
             if user and isinstance(user, TGUser):
                 await TGUser.objects.filter(id=user.id).aupdate(is_active=False)
             # Не пробрасываем дальше, просто игнорируем update
-            return
+            return None
+        except Exception as e:
+            logging.critical(f"Unhandled exception in ForbiddenUserMiddleware: {e}")
+            return None
