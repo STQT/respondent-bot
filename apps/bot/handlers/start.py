@@ -227,7 +227,7 @@ async def handle_poll_answer(poll_answer: PollAnswer, state: FSMContext, user: T
 
 
 @start_router.message(PollStates.waiting_for_mixed_custom_input)
-async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
+async def handle_custom_input_for_mixed(message: Message, state: FSMContext, user: TGUser | None):
     await message.bot.send_chat_action(message.from_user.id, action=ChatAction.TYPING)
 
     data = await state.get_data()
@@ -238,11 +238,14 @@ async def handle_custom_input_for_mixed(message: Message, state: FSMContext):
     except Answer.DoesNotExist:
         await message.answer("❌ Жавобни сақлашда хато юз берди.")
         return
-    open_answer = message.text.strip()
-    answer.open_answer = open_answer
-    await answer.asave()
-    await send_confirmation_text(message.bot, answer, open_answer)
-    await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
+    if message.text:
+        open_answer = message.text.strip()
+        answer.open_answer = open_answer
+        await answer.asave()
+        await send_confirmation_text(message.bot, answer, open_answer)
+        await message.answer("✅ Жавоб қабул қилинди!", reply_markup=ReplyKeyboardRemove())
 
-    await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
-                            answer.question_id)
+        await get_next_question(message.bot, message.chat.id, state, answer.respondent, answer.respondent.history,
+                                answer.question_id)
+    else:
+        await get_current_question(message.bot, message.from_user.id, state, user)
