@@ -296,6 +296,7 @@ async def send_confirmation_text(bot, answer, open_answer=None):
     )
 
     try:
-        await bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
+        if answer.telegram_msg_id is not None:
+            await bot.delete_message(chat_id=answer.telegram_chat_id, message_id=answer.telegram_msg_id)
     except Exception as e:
         print(f"⚠️ Не удалось удалить poll: {e}")
