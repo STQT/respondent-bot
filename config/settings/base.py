@@ -47,6 +47,16 @@ LOCALE_PATHS = [str(BASE_DIR / "locale")]
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {"default": env.db("DATABASE_URL")}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'pyforms',
+#         'USER': 'KlfQhUAxcDpNwonQixemsoeqMobLcrid',
+#         'PASSWORD': 'edXckWnkmz42byjyn2rwT19U7wZd1NWaB69fZTniG5DIzUYNYGVdX6q7aFiNR6jk',
+#         'HOST': 'postgres',  # или IP-адрес сервера базы данных
+#         'PORT': '6432',       # стандартный порт PostgreSQL
+#     }
+# }
 DATABASES["default"]["ATOMIC_REQUESTS"] = False
 # https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

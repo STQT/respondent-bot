@@ -35,8 +35,12 @@ services:
     volumes:
       - production_postgres_data:/var/lib/postgresql/data
       - production_postgres_data_backups:/backups
+    ports:
+      - "5432:5432"
+      - "6432:6432"
     env_file:
       - ./.envs/.production/.postgres
+    command: /usr/local/bin/start-pgbouncer.sh
 
 #  traefik:
 #    build:
