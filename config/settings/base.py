@@ -53,11 +53,11 @@ except:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': env('POSTGRES_DB', default='apps'),
-            'USER': env('POSTGRES_USER', default='debug'),
-            'PASSWORD': env('POSTGRES_PASSWORD', default='debug'),
-            'HOST': env('POSTGRES_HOST', default='postgres'),
-            'PORT': env('POSTGRES_PORT', default='5432'),
+            'NAME': env('PGB_POSTGRES_DB', default='apps'),
+            'USER': env('PGB_POSTGRES_USER', default='debug'),
+            'PASSWORD': env('PGB_POSTGRES_PASSWORD', default='debug'),
+            'HOST': env('PGB_POSTGRES_HOST', default='postgres'),
+            'PORT': env('PGB_POSTGRES_PORT', default='5432'),
         }
     }
 DATABASES["default"]["ATOMIC_REQUESTS"] = False
