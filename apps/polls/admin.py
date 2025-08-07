@@ -8,8 +8,9 @@ from markdownx.admin import MarkdownxModelAdmin
 
 
 from apps.polls.filters import PollFilterForm
-from apps.polls.models import Poll, Question, Choice, Respondent, Answer
+from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile
 from apps.polls.resources import RespondentExportResource
+from apps.polls.tasks import export_respondents_task
 
 
 class ChoiceInline(admin.TabularInline):
@@ -48,6 +49,20 @@ class QuestionAdmin(admin.ModelAdmin):
     list_filter = ('poll', 'type')
 
 
+@admin.register(ExportFile)
+class ExportFileAdmin(admin.ModelAdmin):
+    list_display = ('filename', 'status', 'created_at', 'completed_at', 'created_by', 'poll')
+    list_filter = ('status', 'created_at', 'poll')
+    readonly_fields = ('created_at', 'completed_at', 'file', 'filename')
+    search_fields = ('filename', 'error_message')
+    
+    def has_add_permission(self, request):
+        return False  # Запрещаем создание через админку
+    
+    def has_change_permission(self, request, obj=None):
+        return False  # Запрещаем редактирование через админку
+
+
 @admin.register(Respondent)
 class RespondentAdmin(admin.ModelAdmin):
     list_display = ('tg_user', 'poll', 'started_at', 'finished_at')
@@ -57,7 +72,8 @@ class RespondentAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         return [
-            path('export-custom/', self.admin_site.admin_view(self.export_custom_view), name='respondent_export_custom')
+            path('export-custom/', self.admin_site.admin_view(self.export_custom_view), name='respondent_export_custom'),
+            path('export-async/', self.admin_site.admin_view(self.export_async_view), name='respondent_export_async')
         ] + urls
 
     def export_custom_view(self, request):
@@ -94,6 +110,45 @@ class RespondentAdmin(admin.ModelAdmin):
             "opts": self.model._meta,
             "form": form,
             "title": "Экспорт респондентов с фильтрами",
+        }
+        return TemplateResponse(request, "polls/respondents_export_form.html", context)
+
+    def export_async_view(self, request):
+        if request.method == "POST":
+            form = PollFilterForm(request.POST)
+            if form.is_valid():
+                poll = form.cleaned_data["poll"]
+                include_unfinished = form.cleaned_data["include_unfinished"]
+                
+                # Создаем запись экспорта
+                export_file = ExportFile.objects.create(
+                    poll=poll,
+                    include_unfinished=include_unfinished,
+                    created_by=request.user,
+                    filename=f"respondents_poll_{poll.id if poll else 'all'}.xlsx"
+                )
+                
+                # Запускаем Celery task
+                export_respondents_task.delay(export_file.id)
+                
+                from django.contrib import messages
+                messages.success(
+                    request,
+                    f"Экспорт запущен! Файл будет готов через несколько минут. "
+                    f"ID экспорта: {export_file.id}"
+                )
+                
+                return admin.utils.response.PostResponse(
+                    request,
+                    admin.utils.response.redirect_to_referer(request, default='..')
+                )
+        else:
+            form = PollFilterForm()
+
+        context = {
+            "opts": self.model._meta,
+            "form": form,
+            "title": "Асинхронный экспорт респондентов",
         }
         return TemplateResponse(request, "polls/respondents_export_form.html", context)
 

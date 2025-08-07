@@ -5,6 +5,7 @@ from django.db import models
 from django.db.models import TextChoices
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+import os
 
 from apps.users.models import TGUser
 
@@ -102,3 +103,102 @@ class Answer(models.Model):
     class Meta:
         verbose_name = _("Ответ")
         verbose_name_plural = _("Ответы")
+
+
+def export_file_path(instance, filename):
+    """Генерирует путь для файла экспорта"""
+    return f'exports/{instance.created_at.strftime("%Y/%m/%d")}/{filename}'
+
+
+class ExportFile(models.Model):
+    """Модель для хранения экспортированных файлов"""
+    STATUS_CHOICES = [
+        ('pending', _('В ожидании')),
+        ('processing', _('Обрабатывается')),
+        ('completed', _('Завершено')),
+        ('failed', _('Ошибка')),
+    ]
+
+    file = models.FileField(
+        upload_to=export_file_path,
+        verbose_name=_('Файл'),
+        null=True,
+        blank=True
+    )
+    filename = models.CharField(
+        max_length=255,
+        verbose_name=_('Имя файла')
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        verbose_name=_('Статус')
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Дата создания')
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Дата завершения')
+    )
+    error_message = models.TextField(
+        blank=True,
+        verbose_name=_('Сообщение об ошибке')
+    )
+    created_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        verbose_name=_('Создатель'),
+        null=True,
+        blank=True
+    )
+
+    # Параметры экспорта
+    poll = models.ForeignKey(
+        'Poll',
+        on_delete=models.CASCADE,
+        verbose_name=_('Опрос'),
+        null=True,
+        blank=True
+    )
+    include_unfinished = models.BooleanField(
+        default=False,
+        verbose_name=_('Включать незавершенные')
+    )
+
+    class Meta:
+        verbose_name = _('Файл экспорта')
+        verbose_name_plural = _('Файлы экспорта')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.filename} ({self.get_status_display()})"
+
+    def get_file_url(self):
+        """Возвращает URL для скачивания файла"""
+        if self.file and self.status == 'completed':
+            return self.file.url
+        return None
+
+    def delete_file(self):
+        """Удаляет физический файл"""
+        if self.file and os.path.exists(self.file.path):
+            os.remove(self.file.path)
+
+    def save(self, *args, **kwargs):
+        # При удалении записи также удаляем файл
+        if self.pk:
+            try:
+                old_instance = ExportFile.objects.get(pk=self.pk)
+                if old_instance.file != self.file and old_instance.file:
+                    old_instance.delete_file()
+            except ExportFile.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self.delete_file()
+        super().delete(*args, **kwargs)
