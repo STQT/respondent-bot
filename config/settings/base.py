@@ -46,17 +46,20 @@ LOCALE_PATHS = [str(BASE_DIR / "locale")]
 # DATABASES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
-DATABASES = {"default": env.db("DATABASE_URL")}
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'pyforms',
-#         'USER': 'KlfQhUAxcDpNwonQixemsoeqMobLcrid',
-#         'PASSWORD': 'edXckWnkmz42byjyn2rwT19U7wZd1NWaB69fZTniG5DIzUYNYGVdX6q7aFiNR6jk',
-#         'HOST': 'postgres',  # или IP-адрес сервера базы данных
-#         'PORT': '6432',       # стандартный порт PostgreSQL
-#     }
-# }
+try:
+    DATABASES = {"default": env.db("DATABASE_URL")}
+except:
+    # Fallback для локальной разработки
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('POSTGRES_DB', default='apps'),
+            'USER': env('POSTGRES_USER', default='debug'),
+            'PASSWORD': env('POSTGRES_PASSWORD', default='debug'),
+            'HOST': env('POSTGRES_HOST', default='postgres'),
+            'PORT': env('POSTGRES_PORT', default='5432'),
+        }
+    }
 DATABASES["default"]["ATOMIC_REQUESTS"] = False
 # https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -304,10 +307,10 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-time-limit
 # TODO: set to whatever value is adequate in your circumstances
-CELERY_TASK_TIME_LIMIT = 5 * 60
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes for export tasks
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-soft-time-limit
 # TODO: set to whatever value is adequate in your circumstances
-CELERY_TASK_SOFT_TIME_LIMIT = 60
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit for export tasks
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#beat-scheduler
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#worker-send-task-events

@@ -1,5 +1,6 @@
 import os
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from django.utils import timezone
 from django.core.files.base import ContentFile
 from tablib import Dataset
@@ -8,7 +9,7 @@ from .models import ExportFile, Respondent
 from .resources import RespondentExportResource
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, soft_time_limit=1800, time_limit=2100)  # 30 min soft, 35 min hard
 def export_respondents_task(self, export_file_id):
     """
     Celery task для экспорта респондентов в файл
@@ -66,6 +67,20 @@ def export_respondents_task(self, export_file_id):
         return {
             'status': 'error',
             'message': f'ExportFile with id {export_file_id} not found'
+        }
+    except SoftTimeLimitExceeded:
+        # Обработка таймаута
+        try:
+            export_file = ExportFile.objects.get(id=export_file_id)
+            export_file.status = 'failed'
+            export_file.error_message = 'Task timed out - export took too long'
+            export_file.save()
+        except ExportFile.DoesNotExist:
+            pass
+        
+        return {
+            'status': 'error',
+            'message': 'Task timed out - export took too long'
         }
     except Exception as e:
         # Обновляем статус на "ошибка"
