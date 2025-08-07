@@ -74,7 +74,6 @@ class RespondentExportResource(ModelResource):
         return ""
 
     def export_resource(self, respondent, *args, **kwargs):
-        print(f"📤 Exporting respondent: {respondent.pk}")
         row = {
             'tg_user_id': self.dehydrate_tg_user_id(respondent),
             'fullname': self.dehydrate_fullname(respondent),
