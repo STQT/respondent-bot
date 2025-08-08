@@ -254,10 +254,10 @@ async def send_confirmation_text(bot, answer, open_answer=None):
         print(f"❌ Ошибка: telegram_chat_id отсутствует для Answer ID={answer.id}")
         return
     # ✅ Подтверждение ответа + % выполнения
-    total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
-    answered_count = await sync_to_async(
-        lambda: Answer.objects.filter(respondent=answer.respondent, is_answered=True).count())()
-    progress = int((answered_count / total_questions) * 100)
+    # total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
+    # answered_count = await sync_to_async(
+    #     lambda: Answer.objects.filter(respondent=answer.respondent, is_answered=True).count())()
+    # progress = int((answered_count / total_questions) * 100)
     # 🧾 Собираем текст ответа (один или несколько)
     question = await sync_to_async(lambda: answer.question)()
     if question.type in (
@@ -275,18 +275,18 @@ async def send_confirmation_text(bot, answer, open_answer=None):
     if open_answer:
         selected_text += f"\n• {open_answer}\n"
 
-    def render_progress_bar(progress: int, total_blocks: int = 10) -> str:
-        filled_blocks = int((progress / 100) * total_blocks)
-        empty_blocks = total_blocks - filled_blocks
-        return "█" * filled_blocks + "░" * empty_blocks  # или ▓ и ░ для более мягкого стиля
+    # def render_progress_bar(progress: int, total_blocks: int = 10) -> str:
+    #     filled_blocks = int((progress / 100) * total_blocks)
+    #     empty_blocks = total_blocks - filled_blocks
+    #     return "█" * filled_blocks + "░" * empty_blocks  # или ▓ и ░ для более мягкого стиля
 
-    progress_bar = render_progress_bar(progress)
+    # progress_bar = render_progress_bar(progress)
 
     # 💬 Формируем текст подтверждения
     confirmation_text = (
         f"<b>{answer.question.text}</b>\n\n"
         f"✅ Сиз танлаган жавоб(лар):\n{selected_text}\n\n"
-        f"{progress_bar} <b>{progress}%</b>"
+        # f"{progress_bar} <b>{progress}%</b>"
     )
 
     await bot.send_message(
