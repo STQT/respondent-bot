@@ -77,7 +77,7 @@ class Command(BaseCommand):
         # Показываем примеры пользователей
         self.stdout.write('\n👤 Примеры пользователей для уведомления:')
         for user in users_to_notify[:5]:
-            self.stdout.write(f'   - {user.fullname} (ID: {user.id}, TG: {user.telegram_id})')
+            self.stdout.write(f'   - {user.fullname} (ID: {user.id}, Username: {user.username or "Нет"})')
 
         if not options['dry_run']:
             # Создаем тестовую кампанию

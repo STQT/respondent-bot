@@ -206,6 +206,7 @@ def send_notifications_chunk_task(self, campaign_id, user_ids, chunk_index):
         topic = campaign.topic
         
         # Получаем пользователей для уведомления
+        # В TGUser.id хранится telegram_id (chat_id для бота)
         users = TGUser.objects.filter(id__in=user_ids, is_active=True)
         
         sent_count = 0
@@ -226,7 +227,7 @@ def send_notifications_chunk_task(self, campaign_id, user_ids, chunk_index):
                 
                 # Отправляем сообщение синхронно
                 bot.send_message(
-                    chat_id=user.telegram_id,
+                    chat_id=user.id,  # В TGUser.id хранится telegram_id
                     text=message_text,
                     reply_markup=markup
                 )

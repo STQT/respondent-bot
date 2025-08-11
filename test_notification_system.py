@@ -76,7 +76,7 @@ def test_notification_logic():
         if users_to_notify.exists():
             print("\n👤 Примеры пользователей для уведомления:")
             for user in users_to_notify[:5]:
-                print(f"   - {user.fullname} (ID: {user.id}, TG: {user.telegram_id})")
+                print(f"   - {user.fullname} (ID: {user.id}, Username: {user.username or 'Нет'})")
         
         # Очищаем тестовую кампанию
         campaign.delete()
