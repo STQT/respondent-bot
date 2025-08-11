@@ -202,3 +202,37 @@ class ExportFile(models.Model):
     def delete(self, *args, **kwargs):
         self.delete_file()
         super().delete(*args, **kwargs)
+
+
+class NotificationCampaign(models.Model):
+    """Кампания уведомлений для пользователей, не прошедших опрос по теме"""
+
+    STATUS_CHOICES = [
+        ('pending', 'Ожидает'),
+        ('processing', 'В обработке'),
+        ('completed', 'Завершено'),
+        ('failed', 'Ошибка'),
+    ]
+
+    topic = models.ForeignKey('Poll', on_delete=models.CASCADE, verbose_name='Тема')
+    total_users = models.IntegerField(verbose_name='Общее количество пользователей')
+    sent_users = models.IntegerField(default=0, verbose_name='Отправлено пользователям')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Время создания')
+    started_at = models.DateTimeField(null=True, blank=True, verbose_name='Время начала')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Время завершения')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Статус обработки')
+    error_message = models.TextField(blank=True, verbose_name='Сообщение об ошибке')
+
+    class Meta:
+        verbose_name = 'Кампания уведомлений'
+        verbose_name_plural = 'Кампании уведомлений'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Уведомления по теме '{self.topic.name}' - {self.total_users} пользователей"
+
+    def get_progress_percentage(self):
+        """Получить процент выполнения"""
+        if self.total_users == 0:
+            return 0
+        return round((self.sent_users / self.total_users) * 100, 1)

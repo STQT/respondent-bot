@@ -98,6 +98,187 @@ def export_respondents_task(self, export_file_id):
         }
 
 
+@shared_task(bind=True, soft_time_limit=1800, time_limit=2100)  # 30 min soft, 35 min hard
+def start_notification_campaign_task(self, campaign_id):
+    """
+    Основная задача для запуска кампании уведомлений.
+    Разбивает пользователей на группы по 100 и запускает дочерние задачи.
+    """
+    try:
+        from .models import NotificationCampaign, Poll
+        from apps.users.models import TGUser
+        
+        campaign = NotificationCampaign.objects.get(id=campaign_id)
+        campaign.status = 'processing'
+        campaign.save()
+        
+        # Получаем всех пользователей, которые не прошли опрос по данной теме
+        topic = campaign.topic
+        users_who_completed = Respondent.objects.filter(
+            poll=topic,
+            finished_at__isnull=False
+        ).values_list('tg_user_id', flat=True).distinct()
+        
+        # Получаем всех пользователей, которые НЕ прошли опрос по данной теме
+        all_users = TGUser.objects.filter(is_active=True)
+        users_to_notify = all_users.exclude(id__in=users_who_completed)
+        
+        campaign.total_users = users_to_notify.count()
+        campaign.save()
+        
+        if campaign.total_users == 0:
+            campaign.status = 'completed'
+            campaign.completed_at = timezone.now()
+            campaign.save()
+            return {
+                'status': 'success',
+                'message': 'No users to notify for this topic'
+            }
+        
+        # Разбиваем пользователей на группы по 100
+        user_ids = list(users_to_notify.values_list('id', flat=True))
+        chunk_size = 100
+        user_chunks = [user_ids[i:i + chunk_size] for i in range(0, len(user_ids), chunk_size)]
+        
+        # Запускаем дочерние задачи последовательно
+        for i, chunk in enumerate(user_chunks):
+            # Запускаем задачу с задержкой для последовательности
+            send_notifications_chunk_task.apply_async(
+                args=[campaign_id, chunk, i],
+                countdown=i * 2  # 2 секунды между запусками
+            )
+        
+        return {
+            'status': 'success',
+            'message': f'Started notification campaign for {campaign.total_users} users in {len(user_chunks)} chunks'
+        }
+        
+    except NotificationCampaign.DoesNotExist:
+        return {
+            'status': 'error',
+            'message': f'NotificationCampaign with id {campaign_id} not found'
+        }
+    except SoftTimeLimitExceeded:
+        # Обработка таймаута
+        try:
+            campaign = NotificationCampaign.objects.get(id=campaign_id)
+            campaign.status = 'failed'
+            campaign.error_message = 'Task timed out - campaign took too long'
+            campaign.save()
+        except NotificationCampaign.DoesNotExist:
+            pass
+        
+        return {
+            'status': 'error',
+            'message': 'Task timed out - campaign took too long'
+        }
+    except Exception as e:
+        # Обновляем статус на "ошибка"
+        try:
+            campaign = NotificationCampaign.objects.get(id=campaign_id)
+            campaign.status = 'failed'
+            campaign.error_message = str(e)
+            campaign.save()
+        except NotificationCampaign.DoesNotExist:
+            pass
+        
+        return {
+            'status': 'error',
+            'message': str(e)
+        }
+
+
+@shared_task(bind=True, soft_time_limit=300, time_limit=360)  # 5 min soft, 6 min hard
+def send_notifications_chunk_task(self, campaign_id, user_ids, chunk_index):
+    """
+    Отправляет уведомления группе пользователей (до 100 человек).
+    Учитывает интервал отправки для избежания блокировки.
+    """
+    try:
+        from .models import NotificationCampaign, Poll
+        from apps.users.models import TGUser
+        from apps.bot.misc import bot
+        from django.utils.translation import gettext as _
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        import time
+        
+        campaign = NotificationCampaign.objects.get(id=campaign_id)
+        topic = campaign.topic
+        
+        # Получаем пользователей для уведомления
+        users = TGUser.objects.filter(id__in=user_ids, is_active=True)
+        
+        sent_count = 0
+        failed_count = 0
+        
+        for i, user in enumerate(users):
+            try:
+                # Создаем клавиатуру с кнопками
+                markup = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="🔄 Давом этиш", callback_data=f"poll_continue:{topic.uuid}"),
+                        InlineKeyboardButton(text="♻️ Қайта бошлаш", callback_data=f"poll_restart:{topic.uuid}")
+                    ]
+                ])
+                
+                # Текст уведомления
+                message_text = str(_("Сиз сўровномани тўлиқ якунламагансиз. Давом этасизми ёки қайта бошлайсизми?"))
+                
+                # Отправляем сообщение синхронно
+                bot.send_message(
+                    chat_id=user.telegram_id,
+                    text=message_text,
+                    reply_markup=markup
+                )
+                
+                sent_count += 1
+                
+                # Обновляем счетчик в кампании
+                campaign.sent_users += 1
+                campaign.save()
+                
+                # Пауза между отправками (1 секунда)
+                if i < len(users) - 1:  # Не ждем после последнего пользователя
+                    time.sleep(1)
+                
+            except Exception as e:
+                failed_count += 1
+                # Логируем ошибку, но продолжаем с другими пользователями
+                print(f"Failed to send notification to user {user.id}: {e}")
+                continue
+        
+        # Проверяем, завершена ли вся кампания
+        if campaign.sent_users >= campaign.total_users:
+            campaign.status = 'completed'
+            campaign.completed_at = timezone.now()
+            campaign.save()
+        
+        return {
+            'status': 'success',
+            'chunk_index': chunk_index,
+            'sent_count': sent_count,
+            'failed_count': failed_count,
+            'message': f'Chunk {chunk_index}: sent {sent_count}, failed {failed_count}'
+        }
+        
+    except NotificationCampaign.DoesNotExist:
+        return {
+            'status': 'error',
+            'message': f'NotificationCampaign with id {campaign_id} not found'
+        }
+    except SoftTimeLimitExceeded:
+        return {
+            'status': 'error',
+            'message': f'Chunk {chunk_index} timed out'
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'chunk_index': chunk_index,
+            'message': str(e)
+        }
+
+
 @shared_task
 def cleanup_old_exports():
     """

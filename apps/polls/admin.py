@@ -5,10 +5,11 @@ from django.urls import path
 from import_export.admin import ExportMixin
 from tablib import Dataset
 from markdownx.admin import MarkdownxModelAdmin
+from django.utils import timezone
 
 
 from apps.polls.filters import PollFilterForm
-from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile
+from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, NotificationCampaign
 from apps.polls.resources import RespondentExportResource
 from apps.polls.tasks import export_respondents_task
 
@@ -157,3 +158,45 @@ class RespondentAdmin(admin.ModelAdmin):
 class AnswerAdmin(admin.ModelAdmin):
     list_display = ('respondent', 'question')
     list_filter = ('question__poll',)
+
+
+@admin.register(NotificationCampaign)
+class NotificationCampaignAdmin(admin.ModelAdmin):
+    list_display = ['topic', 'total_users', 'sent_users', 'status', 'created_at', 'started_at', 'completed_at']
+    list_filter = ['status', 'topic', 'created_at']
+    readonly_fields = ['total_users', 'sent_users', 'created_at', 'started_at', 'completed_at', 'get_progress_percentage']
+    search_fields = ['topic__name']
+    actions = ['start_notification_campaign']
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('topic', 'status', 'error_message')
+        }),
+        ('Статистика', {
+            'fields': ('total_users', 'sent_users', 'get_progress_percentage'),
+            'classes': ('collapse',)
+        }),
+        ('Временные метки', {
+            'fields': ('created_at', 'started_at', 'completed_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_progress_percentage(self, obj):
+        """Отобразить процент выполнения"""
+        return f"{obj.get_progress_percentage()}%"
+    get_progress_percentage.short_description = 'Прогресс'
+    
+    def start_notification_campaign(self, request, queryset):
+        """Запустить кампанию уведомлений"""
+        from .tasks import start_notification_campaign_task
+        
+        for campaign in queryset:
+            if campaign.status == 'pending':
+                start_notification_campaign_task.delay(campaign.id)
+                campaign.status = 'processing'
+                campaign.started_at = timezone.now()
+                campaign.save()
+        
+        self.message_user(request, f"Запущено {queryset.count()} кампаний уведомлений")
+    start_notification_campaign.short_description = "Запустить кампанию уведомлений"
