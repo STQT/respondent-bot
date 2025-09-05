@@ -9,7 +9,7 @@ from django.utils import timezone
 
 
 from apps.polls.filters import PollFilterForm
-from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, NotificationCampaign
+from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, NotificationCampaign, BroadcastPost
 from apps.polls.resources import RespondentExportResource
 from apps.polls.tasks import export_respondents_task
 
@@ -200,3 +200,78 @@ class NotificationCampaignAdmin(admin.ModelAdmin):
         
         self.message_user(request, f"Запущено {queryset.count()} кампаний уведомлений")
     start_notification_campaign.short_description = "Запустить кампанию уведомлений"
+
+
+@admin.register(BroadcastPost)
+class BroadcastPostAdmin(admin.ModelAdmin):
+    list_display = [
+        'title', 'status', 'total_users', 'sent_users', 'failed_users', 
+        'get_progress_percentage', 'get_success_rate', 'created_at', 'scheduled_at'
+    ]
+    list_filter = ['status', 'created_at', 'scheduled_at']
+    search_fields = ['title', 'content']
+    readonly_fields = [
+        'total_users', 'sent_users', 'failed_users', 'started_at', 
+        'completed_at', 'get_progress_percentage', 'get_success_rate'
+    ]
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('title', 'content', 'image')
+        }),
+        ('Планирование', {
+            'fields': ('scheduled_at', 'status')
+        }),
+        ('Статистика', {
+            'fields': (
+                'total_users', 'sent_users', 'failed_users', 
+                'get_progress_percentage', 'get_success_rate'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Время выполнения', {
+            'fields': ('started_at', 'completed_at', 'error_message'),
+            'classes': ('collapse',)
+        }),
+    )
+    actions = ['start_broadcast', 'duplicate_broadcast']
+    
+    def get_progress_percentage(self, obj):
+        """Отображает процент выполнения"""
+        return f"{obj.get_progress_percentage()}%"
+    get_progress_percentage.short_description = "Прогресс"
+    
+    def get_success_rate(self, obj):
+        """Отображает процент успешных отправок"""
+        return f"{obj.get_success_rate()}%"
+    get_success_rate.short_description = "Успешность"
+    
+    def start_broadcast(self, request, queryset):
+        """Запустить рассылку"""
+        from .tasks import start_broadcast_task
+        
+        for broadcast in queryset:
+            if broadcast.status in ['draft', 'scheduled']:
+                start_broadcast_task.delay(broadcast.id)
+                broadcast.status = 'sending'
+                broadcast.started_at = timezone.now()
+                broadcast.save()
+        
+        self.message_user(request, f"Запущено {queryset.count()} рассылок")
+    start_broadcast.short_description = "Запустить рассылку"
+    
+    def duplicate_broadcast(self, request, queryset):
+        """Дублировать рассылку"""
+        for broadcast in queryset:
+            broadcast.pk = None
+            broadcast.title = f"{broadcast.title} (копия)"
+            broadcast.status = 'draft'
+            broadcast.total_users = 0
+            broadcast.sent_users = 0
+            broadcast.failed_users = 0
+            broadcast.started_at = None
+            broadcast.completed_at = None
+            broadcast.error_message = ''
+            broadcast.save()
+        
+        self.message_user(request, f"Дублировано {queryset.count()} рассылок")
+    duplicate_broadcast.short_description = "Дублировать рассылку"

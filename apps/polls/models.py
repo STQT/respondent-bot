@@ -236,3 +236,55 @@ class NotificationCampaign(models.Model):
         if self.total_users == 0:
             return 0
         return round((self.sent_users / self.total_users) * 100, 1)
+
+
+class BroadcastPost(models.Model):
+    """Модель для хранения постов для массовой рассылки"""
+    
+    STATUS_CHOICES = [
+        ('draft', 'Черновик'),
+        ('scheduled', 'Запланировано'),
+        ('sending', 'Отправляется'),
+        ('sent', 'Отправлено'),
+        ('failed', 'Ошибка'),
+    ]
+    
+    title = models.CharField(max_length=255, verbose_name='Заголовок поста')
+    content = models.TextField(verbose_name='Содержание поста')
+    image = models.ImageField(upload_to='broadcasts/', null=True, blank=True, verbose_name='Изображение')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    scheduled_at = models.DateTimeField(null=True, blank=True, verbose_name='Время отправки')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', verbose_name='Статус')
+    
+    # Статистика рассылки
+    total_users = models.IntegerField(default=0, verbose_name='Всего пользователей')
+    sent_users = models.IntegerField(default=0, verbose_name='Отправлено пользователям')
+    failed_users = models.IntegerField(default=0, verbose_name='Ошибок отправки')
+    
+    # Время выполнения
+    started_at = models.DateTimeField(null=True, blank=True, verbose_name='Время начала отправки')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Время завершения')
+    error_message = models.TextField(blank=True, verbose_name='Сообщение об ошибке')
+    
+    class Meta:
+        verbose_name = 'Пост для рассылки'
+        verbose_name_plural = 'Посты для рассылки'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.get_status_display()}"
+    
+    def get_progress_percentage(self):
+        """Получить процент выполнения"""
+        if self.total_users == 0:
+            return 0
+        return round((self.sent_users / self.total_users) * 100, 1)
+    
+    def get_success_rate(self):
+        """Получить процент успешных отправок"""
+        if self.sent_users == 0:
+            return 0
+        total_attempts = self.sent_users + self.failed_users
+        if total_attempts == 0:
+            return 0
+        return round((self.sent_users / total_attempts) * 100, 1)

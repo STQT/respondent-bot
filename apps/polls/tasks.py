@@ -197,7 +197,7 @@ def send_notifications_chunk_task(self, campaign_id, user_ids, chunk_index):
     try:
         from .models import NotificationCampaign, Poll
         from apps.users.models import TGUser
-        from apps.bot.misc import bot
+        from apps.bot.misc import get_bot_instance
         from django.utils.translation import gettext as _
         from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
         import time
@@ -226,11 +226,23 @@ def send_notifications_chunk_task(self, campaign_id, user_ids, chunk_index):
                 message_text = str(_("Сиз сўровномани тўлиқ якунламагансиз. Давом этасизми ёки қайта бошлайсизми?"))
                 
                 # Отправляем сообщение синхронно
-                bot.send_message(
-                    chat_id=user.id,  # В TGUser.id хранится telegram_id
-                    text=message_text,
-                    reply_markup=markup
-                )
+                bot = get_bot_instance()
+                # Используем синхронный метод для отправки
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(
+                        bot.send_message(
+                            chat_id=user.id,  # В TGUser.id хранится telegram_id
+                            text=message_text,
+                            reply_markup=markup
+                        )
+                    )
+                finally:
+                    # Правильно закрываем сессию бота
+                    loop.run_until_complete(bot.session.close())
+                    loop.close()
                 
                 sent_count += 1
                 
@@ -299,4 +311,194 @@ def cleanup_old_exports():
     return {
         'status': 'success',
         'deleted_count': count
-    } 
+    }
+
+
+@shared_task(bind=True, soft_time_limit=1800, time_limit=2100)  # 30 min soft, 35 min hard
+def start_broadcast_task(self, broadcast_id):
+    """
+    Основная задача для запуска рассылки поста.
+    Разбивает пользователей на группы по 100 и запускает дочерние задачи.
+    """
+    try:
+        from .models import BroadcastPost
+        from apps.users.models import TGUser
+        
+        broadcast = BroadcastPost.objects.get(id=broadcast_id)
+        broadcast.status = 'sending'
+        broadcast.started_at = timezone.now()
+        broadcast.save()
+        
+        # Получаем всех активных пользователей
+        all_users = TGUser.objects.filter(is_active=True)
+        broadcast.total_users = all_users.count()
+        broadcast.save()
+        
+        if broadcast.total_users == 0:
+            broadcast.status = 'sent'
+            broadcast.completed_at = timezone.now()
+            broadcast.save()
+            return {
+                'status': 'success',
+                'message': 'No active users to send broadcast to'
+            }
+        
+        # Разбиваем пользователей на группы по 100
+        user_ids = list(all_users.values_list('id', flat=True))
+        chunk_size = 100
+        user_chunks = [user_ids[i:i + chunk_size] for i in range(0, len(user_ids), chunk_size)]
+        
+        # Запускаем дочерние задачи последовательно
+        for i, chunk in enumerate(user_chunks):
+            # Запускаем задачу с задержкой для последовательности
+            send_broadcast_chunk_task.apply_async(
+                args=[broadcast_id, chunk, i],
+                countdown=i * 2  # 2 секунды между запусками
+            )
+        
+        return {
+            'status': 'success',
+            'message': f'Started broadcast for {broadcast.total_users} users in {len(user_chunks)} chunks'
+        }
+        
+    except BroadcastPost.DoesNotExist:
+        return {
+            'status': 'error',
+            'message': f'BroadcastPost with id {broadcast_id} not found'
+        }
+    except SoftTimeLimitExceeded:
+        # Обработка таймаута
+        try:
+            broadcast = BroadcastPost.objects.get(id=broadcast_id)
+            broadcast.status = 'failed'
+            broadcast.error_message = 'Task timed out - broadcast took too long'
+            broadcast.save()
+        except BroadcastPost.DoesNotExist:
+            pass
+        
+        return {
+            'status': 'error',
+            'message': 'Task timed out - broadcast took too long'
+        }
+    except Exception as e:
+        # Обновляем статус на "ошибка"
+        try:
+            broadcast = BroadcastPost.objects.get(id=broadcast_id)
+            broadcast.status = 'failed'
+            broadcast.error_message = str(e)
+            broadcast.save()
+        except BroadcastPost.DoesNotExist:
+            pass
+        
+        return {
+            'status': 'error',
+            'message': str(e)
+        }
+
+
+@shared_task(bind=True, soft_time_limit=300, time_limit=360)  # 5 min soft, 6 min hard
+def send_broadcast_chunk_task(self, broadcast_id, user_ids, chunk_index):
+    """
+    Отправляет пост группе пользователей (до 100 человек).
+    Учитывает интервал отправки для избежания блокировки.
+    """
+    try:
+        from .models import BroadcastPost
+        from apps.users.models import TGUser
+        from apps.bot.misc import get_bot_instance
+        from aiogram.types import InputFile
+        import time
+        
+        broadcast = BroadcastPost.objects.get(id=broadcast_id)
+        
+        # Получаем пользователей для рассылки
+        users = TGUser.objects.filter(id__in=user_ids, is_active=True)
+        
+        sent_count = 0
+        failed_count = 0
+        
+        for i, user in enumerate(users):
+            try:
+                # Отправляем сообщение синхронно
+                bot = get_bot_instance()
+                # Используем синхронный метод для отправки
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    if broadcast.image:
+                        # Отправляем с изображением
+                        photo = InputFile(broadcast.image.path)
+                        loop.run_until_complete(
+                            bot.send_photo(
+                                chat_id=user.id,
+                                photo=photo,
+                                caption=f"<b>{broadcast.title}</b>\n\n{broadcast.content}",
+                                parse_mode="HTML"
+                            )
+                        )
+                    else:
+                        # Отправляем только текст
+                        loop.run_until_complete(
+                            bot.send_message(
+                                chat_id=user.id,
+                                text=f"<b>{broadcast.title}</b>\n\n{broadcast.content}",
+                                parse_mode="HTML"
+                            )
+                        )
+                finally:
+                    # Правильно закрываем сессию бота
+                    loop.run_until_complete(bot.session.close())
+                    loop.close()
+                
+                sent_count += 1
+                
+                # Обновляем счетчик в рассылке
+                broadcast.sent_users += 1
+                broadcast.save()
+                
+                # Пауза между отправками (1 секунда)
+                if i < len(users) - 1:  # Не ждем после последнего пользователя
+                    time.sleep(1)
+                
+            except Exception as e:
+                failed_count += 1
+                # Обновляем счетчик ошибок в рассылке
+                broadcast.failed_users += 1
+                broadcast.save()
+                # Логируем ошибку, но продолжаем с другими пользователями
+                print(f"Failed to send broadcast to user {user.id}: {e}")
+                continue
+        
+        # Счетчики ошибок уже обновлены в цикле
+        
+        # Проверяем, завершена ли вся рассылка
+        if broadcast.sent_users + broadcast.failed_users >= broadcast.total_users:
+            broadcast.status = 'sent'
+            broadcast.completed_at = timezone.now()
+            broadcast.save()
+        
+        return {
+            'status': 'success',
+            'chunk_index': chunk_index,
+            'sent_count': sent_count,
+            'failed_count': failed_count,
+            'message': f'Chunk {chunk_index}: sent {sent_count}, failed {failed_count}'
+        }
+        
+    except BroadcastPost.DoesNotExist:
+        return {
+            'status': 'error',
+            'message': f'BroadcastPost with id {broadcast_id} not found'
+        }
+    except SoftTimeLimitExceeded:
+        return {
+            'status': 'error',
+            'message': f'Chunk {chunk_index} timed out'
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'chunk_index': chunk_index,
+            'message': str(e)
+        } 

@@ -52,6 +52,11 @@ def get_webhook_url():
     return host + reverse("bot:" + settings.BOT_WEBHOOK_PATH, args=(settings.BOT_TOKEN,))
 
 
+def get_bot_instance() -> Bot:
+    """Возвращает экземпляр бота для использования в задачах Celery"""
+    return Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+
 async def start_webhook() -> None:
     dp, bot = register_all_misc()
     webhook_info = await bot.get_webhook_info()
