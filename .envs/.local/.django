@@ -16,3 +16,4 @@ CELERY_FLOWER_PASSWORD=debug
 
 # Database
 DATABASE_URL=postgres://debug:debug@postgres:5432/apps
+BOT_TOKEN=8070088589:AAG6NF5bTvre8obnpLkiIM1MEG0ARIaqfTg

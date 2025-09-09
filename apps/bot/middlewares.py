@@ -20,6 +20,15 @@ class UserInternalIdMiddleware(BaseMiddleware):
                 "username": username
             }
         )
+        
+        # Если пользователь вернулся (отправил сообщение), сбрасываем флаг блокировки
+        if not _created and obj.blocked_bot:
+            await TGUser.objects.filter(id=user_id).aupdate(
+                blocked_bot=False,
+                is_active=True
+            )
+            logger.info(f"User {user_id} ({full_name}) unblocked the bot")
+        
         return obj
 
     async def __call__(
@@ -47,7 +56,12 @@ class ForbiddenUserMiddleware(BaseMiddleware):
         except TelegramForbiddenError:
             user: TGUser | None = data.get("user")
             if user and isinstance(user, TGUser):
-                await TGUser.objects.filter(id=user.id).aupdate(is_active=False)
+                # Помечаем пользователя как заблокировавшего бота и неактивного
+                await TGUser.objects.filter(id=user.id).aupdate(
+                    is_active=False, 
+                    blocked_bot=True
+                )
+                logger.info(f"User {user.id} ({user.fullname}) blocked the bot")
             # Не пробрасываем дальше, просто игнорируем update
             return None
         except Exception as e:

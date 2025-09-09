@@ -349,3 +349,6 @@ BOT_WEBHOOK_PATH = "bot"
 BOT_HOST = env("HOST", default="https://bot.example.uz")
 PAYMENT_PROVIDER_TOKEN = env("PAYMENT_PROVIDER_TOKEN", default="BOT")
 OPERATOR_CHAT_ID = env("OPERATOR_CHAT_ID", default="BOT")
+
+# Тестовый Telegram ID для проверки рассылок
+TEST_TELEGRAM_ID = env.int("TEST_TELEGRAM_ID", default=123456789)

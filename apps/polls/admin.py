@@ -233,7 +233,7 @@ class BroadcastPostAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    actions = ['start_broadcast', 'duplicate_broadcast']
+    actions = ['start_broadcast', 'duplicate_broadcast', 'send_test_broadcast', 'send_test_broadcast_admin']
     
     def get_progress_percentage(self, obj):
         """Отображает процент выполнения"""
@@ -275,3 +275,89 @@ class BroadcastPostAdmin(admin.ModelAdmin):
         
         self.message_user(request, f"Дублировано {queryset.count()} рассылок")
     duplicate_broadcast.short_description = "Дублировать рассылку"
+    
+    def send_test_broadcast(self, request, queryset):
+        """Отправить тестовый пост"""
+        from django.contrib import messages
+        from django.shortcuts import render
+        from django.http import HttpResponseRedirect
+        from .tasks import send_test_broadcast_task
+        
+        # Проверяем, что выбран только один пост
+        if queryset.count() != 1:
+            messages.error(request, 'Пожалуйста, выберите только один пост для тестовой отправки')
+            return HttpResponseRedirect(request.get_full_path())
+        
+        # Проверяем, есть ли параметр action в POST запросе
+        if request.method == 'POST' and 'action' in request.POST:
+            # Это запрос от Django Admin для выполнения действия
+            # Показываем форму
+            context = {
+                'queryset': queryset,
+                'action_name': 'send_test_broadcast',
+                'title': 'Тестовая отправка поста'
+            }
+            return render(request, 'admin/test_broadcast_form.html', context)
+        
+        if request.method == 'POST' and 'test_user_id' in request.POST:
+            # Это отправка формы
+            test_user_id = request.POST.get('test_user_id')
+            if not test_user_id:
+                messages.error(request, 'Пожалуйста, введите Telegram ID пользователя')
+                context = {
+                    'queryset': queryset,
+                    'action_name': 'send_test_broadcast',
+                    'title': 'Тестовая отправка поста'
+                }
+                return render(request, 'admin/test_broadcast_form.html', context)
+            
+            try:
+                test_user_id = int(test_user_id)
+            except ValueError:
+                messages.error(request, 'Telegram ID должен быть числом')
+                context = {
+                    'queryset': queryset,
+                    'action_name': 'send_test_broadcast',
+                    'title': 'Тестовая отправка поста'
+                }
+                return render(request, 'admin/test_broadcast_form.html', context)
+            
+            broadcast = queryset.first()
+            
+            # Запускаем задачу тестовой отправки
+            task = send_test_broadcast_task.delay(broadcast.id, test_user_id)
+            
+            messages.success(request, f'Тестовая отправка запущена для пользователя {test_user_id}. Задача ID: {task.id}')
+            return HttpResponseRedirect(request.get_full_path())
+        
+        # Отображаем форму для ввода Telegram ID
+        context = {
+            'queryset': queryset,
+            'action_name': 'send_test_broadcast',
+            'title': 'Тестовая отправка поста'
+        }
+        return render(request, 'admin/test_broadcast_form.html', context)
+    
+    send_test_broadcast.short_description = "Отправить тестовый пост"
+    
+    def send_test_broadcast_admin(self, request, queryset):
+        """Отправить тестовый пост администратору"""
+        from django.contrib import messages
+        from django.conf import settings
+        from .tasks import send_test_broadcast_task
+        
+        # ID для тестирования из настроек
+        admin_test_id = getattr(settings, 'TEST_TELEGRAM_ID', 123456789)
+        
+        if queryset.count() != 1:
+            messages.error(request, 'Пожалуйста, выберите только один пост для тестовой отправки')
+            return
+        
+        broadcast = queryset.first()
+        
+        # Запускаем задачу тестовой отправки
+        task = send_test_broadcast_task.delay(broadcast.id, admin_test_id)
+        
+        messages.success(request, f'Тестовый пост отправлен администратору (ID: {admin_test_id}). Задача ID: {task.id}')
+    
+    send_test_broadcast_admin.short_description = "Тест администратору"

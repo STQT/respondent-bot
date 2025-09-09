@@ -1,0 +1,67 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:polls_broadcastpost_changelist' %}">{% trans 'Broadcast posts' %}</a>
+&rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="form-row">
+    <div class="field-box">
+        <h3>Выбранные посты:</h3>
+        <ul>
+            {% for broadcast in queryset %}
+                <li>
+                    <strong>{{ broadcast.title }}</strong>
+                    {% if broadcast.image %}
+                        <span class="help">(с изображением)</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-row">
+        <div class="field-box">
+            <label for="test_user_id">Telegram ID пользователя:</label>
+            <input type="number" id="test_user_id" name="test_user_id" required 
+                   placeholder="Введите Telegram ID (например: 123456789)" 
+                   style="width: 300px;">
+            <p class="help">
+                Введите Telegram ID пользователя, которому нужно отправить тестовый пост.
+                <br>
+                <strong>Важно:</strong> Пользователь должен быть в базе данных и не должен заблокировать бота.
+            </p>
+        </div>
+    </div>
+    
+    <div class="submit-row">
+        <input type="submit" value="Отправить тестовый пост" class="default">
+        <a href="{% url 'admin:polls_broadcastpost_changelist' %}" class="button">Отмена</a>
+    </div>
+</form>
+
+<div class="form-row">
+    <div class="field-box">
+        <h3>Информация:</h3>
+        <ul>
+            <li>Тестовый пост будет отправлен точно так же, как и массовая рассылка</li>
+            <li>Если у поста есть изображение, оно будет отправлено вместе с текстом</li>
+            <li>Пользователь получит сообщение с заголовком и содержимым поста</li>
+            <li>Если пользователь заблокировал бота, отправка не удастся</li>
+        </ul>
+    </div>
+</div>
+
+{% endblock %}

@@ -2,7 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models import (
     CharField, Model, BigIntegerField,
     BooleanField, ForeignKey, FloatField,
-    CASCADE
+    CASCADE, DateTimeField
 )
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -39,6 +39,8 @@ class TGUser(Model):
     username = CharField(verbose_name=_("Имя пользователя"), null=True, blank=True, max_length=255)
     fullname = CharField(verbose_name=_("Полное имя"), max_length=255)
     is_active = BooleanField(verbose_name=_("Активен?"), default=True)
+    last_activity = DateTimeField(verbose_name=_("Последняя активность"), auto_now=True, null=True, blank=True)
+    blocked_bot = BooleanField(verbose_name=_("Заблокировал бота?"), default=False)
 
     class Meta:
         verbose_name = _("Пользователь телеграм")

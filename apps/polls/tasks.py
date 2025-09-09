@@ -329,8 +329,8 @@ def start_broadcast_task(self, broadcast_id):
         broadcast.started_at = timezone.now()
         broadcast.save()
         
-        # Получаем всех активных пользователей
-        all_users = TGUser.objects.filter(is_active=True)
+        # Получаем всех активных пользователей, которые не заблокировали бота
+        all_users = TGUser.objects.filter(is_active=True, blocked_bot=False)
         broadcast.total_users = all_users.count()
         broadcast.save()
         
@@ -411,8 +411,12 @@ def send_broadcast_chunk_task(self, broadcast_id, user_ids, chunk_index):
         
         broadcast = BroadcastPost.objects.get(id=broadcast_id)
         
-        # Получаем пользователей для рассылки
-        users = TGUser.objects.filter(id__in=user_ids, is_active=True)
+        # Получаем пользователей для рассылки (только активных и не заблокировавших бота)
+        users = TGUser.objects.filter(
+            id__in=user_ids, 
+            is_active=True, 
+            blocked_bot=False
+        )
         
         sent_count = 0
         failed_count = 0
@@ -466,8 +470,17 @@ def send_broadcast_chunk_task(self, broadcast_id, user_ids, chunk_index):
                 # Обновляем счетчик ошибок в рассылке
                 broadcast.failed_users += 1
                 broadcast.save()
-                # Логируем ошибку, но продолжаем с другими пользователями
-                print(f"Failed to send broadcast to user {user.id}: {e}")
+                
+                # Проверяем, заблокировал ли пользователь бота
+                error_message = str(e).lower()
+                if any(keyword in error_message for keyword in ['blocked', 'forbidden', 'chat not found']):
+                    # Помечаем пользователя как заблокировавшего бота
+                    user.blocked_bot = True
+                    user.is_active = False
+                    user.save()
+                    print(f"User {user.id} ({user.fullname}) blocked the bot during broadcast")
+                else:
+                    print(f"Failed to send broadcast to user {user.id}: {e}")
                 continue
         
         # Счетчики ошибок уже обновлены в цикле
@@ -501,4 +514,76 @@ def send_broadcast_chunk_task(self, broadcast_id, user_ids, chunk_index):
             'status': 'error',
             'chunk_index': chunk_index,
             'message': str(e)
-        } 
+        }
+
+
+@shared_task(bind=True, soft_time_limit=60, time_limit=120)  # 1 min soft, 2 min hard
+def send_test_broadcast_task(self, broadcast_id, test_user_id):
+    """
+    Отправляет тестовый пост конкретному пользователю по Telegram ID.
+    Используется для проверки внешнего вида поста перед массовой рассылкой.
+    """
+    try:
+        from .models import BroadcastPost
+        from apps.users.models import TGUser
+        from apps.bot.misc import get_bot_instance
+        from aiogram.types import InputFile
+        import asyncio
+        
+        broadcast = BroadcastPost.objects.get(id=broadcast_id)
+        
+        # Проверяем, существует ли пользователь с указанным ID
+        try:
+            test_user = TGUser.objects.get(id=test_user_id)
+        except TGUser.DoesNotExist:
+            return {
+                'status': 'error',
+                'message': f'Пользователь с ID {test_user_id} не найден в базе данных'
+            }
+        
+        # Отправляем сообщение
+        bot = get_bot_instance()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            if broadcast.image:
+                # Отправляем с изображением
+                photo = InputFile(broadcast.image.path)
+                loop.run_until_complete(
+                    bot.send_photo(
+                        chat_id=test_user_id,
+                        photo=photo,
+                        caption=f"<b>{broadcast.title}</b>\n\n{broadcast.content}",
+                        parse_mode="HTML"
+                    )
+                )
+            else:
+                # Отправляем только текст
+                loop.run_until_complete(
+                    bot.send_message(
+                        chat_id=test_user_id,
+                        text=f"<b>{broadcast.title}</b>\n\n{broadcast.content}",
+                        parse_mode="HTML"
+                    )
+                )
+        finally:
+            # Правильно закрываем сессию бота
+            loop.run_until_complete(bot.session.close())
+            loop.close()
+        
+        return {
+            'status': 'success',
+            'message': f'Тестовый пост успешно отправлен пользователю {test_user.fullname} (ID: {test_user_id})'
+        }
+        
+    except BroadcastPost.DoesNotExist:
+        return {
+            'status': 'error',
+            'message': f'BroadcastPost с ID {broadcast_id} не найден'
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'message': f'Ошибка при отправке тестового поста: {str(e)}'
+        }
