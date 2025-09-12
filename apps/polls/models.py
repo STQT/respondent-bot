@@ -215,7 +215,7 @@ class NotificationCampaign(models.Model):
     ]
 
     topic = models.ForeignKey('Poll', on_delete=models.CASCADE, verbose_name='Тема')
-    total_users = models.IntegerField(verbose_name='Общее количество пользователей')
+    total_users = models.IntegerField(default=0, verbose_name='Общее количество пользователей')
     sent_users = models.IntegerField(default=0, verbose_name='Отправлено пользователям')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Время создания')
     started_at = models.DateTimeField(null=True, blank=True, verbose_name='Время начала')
@@ -233,7 +233,7 @@ class NotificationCampaign(models.Model):
 
     def get_progress_percentage(self):
         """Получить процент выполнения"""
-        if self.total_users == 0:
+        if self.total_users is None or self.total_users == 0:
             return 0
         return round((self.sent_users / self.total_users) * 100, 1)
 
@@ -276,7 +276,7 @@ class BroadcastPost(models.Model):
     
     def get_progress_percentage(self):
         """Получить процент выполнения"""
-        if self.total_users == 0:
+        if self.total_users is None or self.total_users == 0:
             return 0
         return round((self.sent_users / self.total_users) * 100, 1)
     

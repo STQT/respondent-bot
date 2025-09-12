@@ -187,6 +187,25 @@ class NotificationCampaignAdmin(admin.ModelAdmin):
         return f"{obj.get_progress_percentage()}%"
     get_progress_percentage.short_description = 'Прогресс'
     
+    def save_model(self, request, obj, form, change):
+        """Custom save method to calculate total_users if not set"""
+        if not change and obj.total_users == 0:  # New object and total_users not set
+            # Calculate total_users based on users who haven't completed the poll
+            from apps.users.models import TGUser
+            from .models import Respondent
+            
+            users_who_completed = Respondent.objects.filter(
+                poll=obj.topic,
+                finished_at__isnull=False
+            ).values_list('tg_user_id', flat=True).distinct()
+            
+            all_users = TGUser.objects.filter(is_active=True)
+            users_to_notify = all_users.exclude(id__in=users_who_completed)
+            
+            obj.total_users = users_to_notify.count()
+        
+        super().save_model(request, obj, form, change)
+    
     def start_notification_campaign(self, request, queryset):
         """Запустить кампанию уведомлений"""
         from .tasks import start_notification_campaign_task
