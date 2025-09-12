@@ -9,93 +9,85 @@ from .models import ExportFile, Respondent
 from .resources import RespondentExportResource
 
 
-@shared_task(bind=True, soft_time_limit=1800, time_limit=2100)  # 30 min soft, 35 min hard
+from django.core.files.base import File
+from tempfile import NamedTemporaryFile
+from openpyxl import Workbook
+
+
+@shared_task(bind=True, soft_time_limit=1800, time_limit=2100)
 def export_respondents_task(self, export_file_id):
-    """
-    Celery task для экспорта респондентов в файл
-    
-    Args:
-        export_file_id: ID записи ExportFile
-    """
     try:
-        # Получаем запись экспорта
         export_file = ExportFile.objects.get(id=export_file_id)
-        
-        # Обновляем статус на "обрабатывается"
-        export_file.status = 'processing'
+        export_file.status = "processing"
         export_file.save()
-        
-        # Создаем ресурс для экспорта
+
+        # ресурс + queryset
         resource = RespondentExportResource(
             poll=export_file.poll,
-            include_unfinished=export_file.include_unfinished
+            include_unfinished=export_file.include_unfinished,
         )
-        
-        # Получаем queryset
         queryset = resource.get_export_queryset(None)
         export_fields = resource.get_export_fields()
-        
-        # Создаем dataset
-        dataset = Dataset(headers=[f.column_name for f in export_fields])
-        
-        # Добавляем данные
-        for respondent in queryset:
+
+        # создаем Excel-файл
+        wb = Workbook(write_only=True)  # write_only → не держит всё в памяти
+        ws = wb.create_sheet(title="Respondents")
+
+        # заголовки
+        headers = [f.column_name for f in export_fields]
+        ws.append(headers)
+
+        # данные (итерация по чанкам)
+        rows_exported = 0
+        for respondent in queryset.iterator(chunk_size=500):
             row = resource.export_resource(respondent)
-            dataset.append([row.get(f.attribute or f.column_name, "") for f in export_fields])
-        
-        # Генерируем имя файла
+            ws.append([row.get(f.attribute or f.column_name, "") for f in export_fields])
+            rows_exported += 1
+
+        # сохраняем во временный файл
         timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
         poll_id = export_file.poll.id if export_file.poll else "all"
         filename = f"respondents_poll_{poll_id}_{timestamp}.xlsx"
-        
-        # Сохраняем файл
-        file_content = dataset.xlsx
-        export_file.file.save(filename, ContentFile(file_content), save=False)
+
+        with NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+            wb.save(tmp.name)
+            tmp.seek(0)
+            export_file.file.save(filename, File(tmp), save=False)
+
         export_file.filename = filename
-        export_file.status = 'completed'
+        export_file.status = "completed"
         export_file.completed_at = timezone.now()
         export_file.save()
-        
+
         return {
-            'status': 'success',
-            'export_file_id': export_file_id,
-            'rows_exported': len(dataset),
-            'filename': filename
+            "status": "success",
+            "export_file_id": export_file_id,
+            "rows_exported": rows_exported,
+            "filename": filename,
         }
-        
+
     except ExportFile.DoesNotExist:
-        return {
-            'status': 'error',
-            'message': f'ExportFile with id {export_file_id} not found'
-        }
+        return {"status": "error", "message": f"ExportFile with id {export_file_id} not found"}
+
     except SoftTimeLimitExceeded:
-        # Обработка таймаута
         try:
             export_file = ExportFile.objects.get(id=export_file_id)
-            export_file.status = 'failed'
-            export_file.error_message = 'Task timed out - export took too long'
+            export_file.status = "failed"
+            export_file.error_message = "Task timed out - export took too long"
             export_file.save()
         except ExportFile.DoesNotExist:
             pass
-        
-        return {
-            'status': 'error',
-            'message': 'Task timed out - export took too long'
-        }
+        return {"status": "error", "message": "Task timed out - export took too long"}
+
     except Exception as e:
-        # Обновляем статус на "ошибка"
         try:
             export_file = ExportFile.objects.get(id=export_file_id)
-            export_file.status = 'failed'
+            export_file.status = "failed"
             export_file.error_message = str(e)
             export_file.save()
         except ExportFile.DoesNotExist:
             pass
-        
-        return {
-            'status': 'error',
-            'message': str(e)
-        }
+        return {"status": "error", "message": str(e)}
 
 
 @shared_task(bind=True, soft_time_limit=1800, time_limit=2100)  # 30 min soft, 35 min hard
