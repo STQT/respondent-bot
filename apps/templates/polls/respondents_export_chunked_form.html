@@ -1,0 +1,105 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:polls_respondent_changelist' %}">{% trans 'Respondents' %}</a>
+&rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="module aligned">
+    <h2>Настройки chunked экспорта</h2>
+    <p>Chunked экспорт разбивает данные на несколько частей и обрабатывает их параллельно, что значительно ускоряет процесс для больших объемов данных.</p>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <fieldset class="module aligned">
+            <h3>Фильтры данных</h3>
+            <div class="form-row">
+                <div>
+                    <label for="{{ form.poll.id_for_label }}">{{ form.poll.label }}:</label>
+                    {{ form.poll }}
+                    {% if form.poll.help_text %}
+                        <p class="help">{{ form.poll.help_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label for="{{ form.include_unfinished.id_for_label }}">{{ form.include_unfinished.label }}:</label>
+                    {{ form.include_unfinished }}
+                    {% if form.include_unfinished.help_text %}
+                        <p class="help">{{ form.include_unfinished.help_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
+        
+        <fieldset class="module aligned">
+            <h3>Параметры chunked экспорта</h3>
+            
+            <div class="form-row">
+                <div>
+                    <label for="chunk_size">Размер части (количество записей):</label>
+                    <input type="number" name="chunk_size" id="chunk_size" value="1000" min="100" max="10000" step="100">
+                    <p class="help">Количество записей в каждой части файла. Рекомендуется 1000-2000 для оптимальной производительности.</p>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label for="max_chunks">Максимальное количество частей:</label>
+                    <input type="number" name="max_chunks" id="max_chunks" value="10" min="1" max="50" step="1">
+                    <p class="help">Максимальное количество частей для экспорта. Если данных больше, размер части будет увеличен.</p>
+                </div>
+            </div>
+        </fieldset>
+        
+        <div class="submit-row">
+            <input type="submit" value="Запустить chunked экспорт" class="default" onclick="return confirm('Запустить chunked экспорт? Это может занять некоторое время.')">
+            <a href="{% url 'admin:polls_respondent_changelist' %}" class="button cancel-link">Отмена</a>
+        </div>
+    </form>
+</div>
+
+<div class="module">
+    <h2>Преимущества chunked экспорта</h2>
+    <ul>
+        <li><strong>Параллельная обработка:</strong> Несколько частей обрабатываются одновременно</li>
+        <li><strong>Быстрый доступ:</strong> Готовые части можно скачивать по мере завершения</li>
+        <li><strong>Устойчивость:</strong> При ошибке в одной части остальные продолжают обрабатываться</li>
+        <li><strong>Масштабируемость:</strong> Легко обрабатывает большие объемы данных</li>
+    </ul>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chunkSizeInput = document.getElementById('chunk_size');
+    const maxChunksInput = document.getElementById('max_chunks');
+    
+    // Автоматический расчет рекомендуемых значений
+    function updateRecommendations() {
+        const chunkSize = parseInt(chunkSizeInput.value) || 1000;
+        const maxChunks = parseInt(maxChunksInput.value) || 10;
+        const maxRecords = chunkSize * maxChunks;
+        
+        console.log(`Chunked экспорт: до ${maxRecords} записей в ${maxChunks} частях по ${chunkSize} записей`);
+    }
+    
+    chunkSizeInput.addEventListener('input', updateRecommendations);
+    maxChunksInput.addEventListener('input', updateRecommendations);
+    
+    updateRecommendations();
+});
+</script>
+
+{% endblock %}

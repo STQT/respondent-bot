@@ -9,7 +9,7 @@ from django.utils import timezone
 
 
 from apps.polls.filters import PollFilterForm
-from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, NotificationCampaign, BroadcastPost
+from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, ExportChunk, NotificationCampaign, BroadcastPost
 from apps.polls.resources import RespondentExportResource
 from apps.polls.tasks import export_respondents_task
 
@@ -50,18 +50,67 @@ class QuestionAdmin(admin.ModelAdmin):
     list_filter = ('poll', 'type')
 
 
+class ExportChunkInline(admin.TabularInline):
+    model = ExportChunk
+    extra = 0
+    readonly_fields = ('chunk_number', 'filename', 'status', 'rows_count', 'created_at', 'completed_at', 'file')
+    fields = ('chunk_number', 'filename', 'status', 'rows_count', 'file', 'created_at', 'completed_at')
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(ExportFile)
 class ExportFileAdmin(admin.ModelAdmin):
-    list_display = ('filename', 'status', 'created_at', 'completed_at', 'created_by', 'poll')
-    list_filter = ('status', 'created_at', 'poll')
-    readonly_fields = ('created_at', 'completed_at', 'file', 'filename')
+    list_display = ('filename', 'status', 'is_chunked', 'get_progress_display', 'created_at', 'completed_at', 'created_by', 'poll')
+    list_filter = ('status', 'is_chunked', 'created_at', 'poll')
+    readonly_fields = ('created_at', 'completed_at', 'file', 'filename', 'is_chunked', 'total_chunks', 'completed_chunks', 'chunk_size', 'get_progress_display')
     search_fields = ('filename', 'error_message')
+    inlines = [ExportChunkInline]
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('filename', 'status', 'poll', 'include_unfinished', 'created_by')
+        }),
+        ('Chunked экспорт', {
+            'fields': ('is_chunked', 'total_chunks', 'completed_chunks', 'chunk_size', 'get_progress_display'),
+            'classes': ('collapse',)
+        }),
+        ('Файлы и время', {
+            'fields': ('file', 'created_at', 'completed_at', 'error_message'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_progress_display(self, obj):
+        """Отображает прогресс chunked экспорта"""
+        if not obj.is_chunked:
+            return "100%" if obj.status == 'completed' else "0%"
+        return f"{obj.get_progress_percentage()}%"
+    get_progress_display.short_description = 'Прогресс'
     
     def has_add_permission(self, request):
         return False  # Запрещаем создание через админку
     
     def has_change_permission(self, request, obj=None):
         return False  # Запрещаем редактирование через админку
+
+
+@admin.register(ExportChunk)
+class ExportChunkAdmin(admin.ModelAdmin):
+    list_display = ('export_file', 'chunk_number', 'filename', 'status', 'rows_count', 'created_at', 'completed_at')
+    list_filter = ('status', 'export_file', 'created_at')
+    readonly_fields = ('export_file', 'chunk_number', 'filename', 'status', 'rows_count', 'file', 'created_at', 'completed_at', 'error_message')
+    search_fields = ('filename', 'export_file__filename')
+    
+    def has_add_permission(self, request):
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Respondent)
@@ -74,7 +123,8 @@ class RespondentAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         return [
             path('export-custom/', self.admin_site.admin_view(self.export_custom_view), name='respondent_export_custom'),
-            path('export-async/', self.admin_site.admin_view(self.export_async_view), name='respondent_export_async')
+            path('export-async/', self.admin_site.admin_view(self.export_async_view), name='respondent_export_async'),
+            path('export-chunked/', self.admin_site.admin_view(self.export_chunked_view), name='respondent_export_chunked')
         ] + urls
 
     def export_custom_view(self, request):
@@ -139,10 +189,8 @@ class RespondentAdmin(admin.ModelAdmin):
                     f"ID экспорта: {export_file.id}"
                 )
                 
-                return admin.utils.response.PostResponse(
-                    request,
-                    admin.utils.response.redirect_to_referer(request, default='..')
-                )
+                from django.shortcuts import redirect
+                return redirect('admin:polls_respondent_changelist')
         else:
             form = PollFilterForm()
 
@@ -152,6 +200,49 @@ class RespondentAdmin(admin.ModelAdmin):
             "title": "Асинхронный экспорт респондентов",
         }
         return TemplateResponse(request, "polls/respondents_export_form.html", context)
+
+    def export_chunked_view(self, request):
+        if request.method == "POST":
+            form = PollFilterForm(request.POST)
+            if form.is_valid():
+                poll = form.cleaned_data["poll"]
+                include_unfinished = form.cleaned_data["include_unfinished"]
+                
+                # Получаем параметры chunked экспорта
+                chunk_size = int(request.POST.get('chunk_size', 1000))
+                max_chunks = int(request.POST.get('max_chunks', 10))
+                
+                # Создаем запись экспорта
+                export_file = ExportFile.objects.create(
+                    poll=poll,
+                    include_unfinished=include_unfinished,
+                    created_by=request.user,
+                    filename=f"respondents_poll_{poll.id if poll else 'all'}_chunked.xlsx"
+                )
+                
+                # Запускаем chunked задачу
+                from .tasks import export_respondents_chunked_task
+                export_respondents_chunked_task.delay(export_file.id, chunk_size, max_chunks)
+                
+                from django.contrib import messages
+                messages.success(
+                    request,
+                    f"Chunked экспорт запущен! Файлы будут готовы через несколько минут. "
+                    f"Размер части: {chunk_size} записей, максимум частей: {max_chunks}. "
+                    f"ID экспорта: {export_file.id}"
+                )
+                
+                from django.shortcuts import redirect
+                return redirect('admin:polls_respondent_changelist')
+        else:
+            form = PollFilterForm()
+
+        context = {
+            "opts": self.model._meta,
+            "form": form,
+            "title": "Chunked экспорт респондентов",
+        }
+        return TemplateResponse(request, "polls/respondents_export_chunked_form.html", context)
 
 
 @admin.register(Answer)

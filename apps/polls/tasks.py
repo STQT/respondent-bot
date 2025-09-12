@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.core.files.base import ContentFile
 from tablib import Dataset
 
-from .models import ExportFile, Respondent
+from .models import ExportFile, ExportChunk, Respondent
 from .resources import RespondentExportResource
 
 
@@ -579,3 +579,217 @@ def send_test_broadcast_task(self, broadcast_id, test_user_id):
             'status': 'error',
             'message': f'Ошибка при отправке тестового поста: {str(e)}'
         }
+
+
+@shared_task(bind=True, soft_time_limit=1800, time_limit=2100)
+def export_respondents_chunked_task(self, export_file_id, chunk_size=1000, max_chunks=10):
+    """
+    Задача для создания chunked экспорта - разбивает данные на части и запускает параллельные задачи
+    """
+    try:
+        export_file = ExportFile.objects.get(id=export_file_id)
+        export_file.status = "processing"
+        export_file.save()
+
+        # Получаем ресурс и queryset
+        resource = RespondentExportResource(
+            poll=export_file.poll,
+            include_unfinished=export_file.include_unfinished,
+        )
+        queryset = resource.get_export_queryset(None)
+        total_count = queryset.count()
+        
+        if total_count == 0:
+            export_file.status = "completed"
+            export_file.completed_at = timezone.now()
+            export_file.save()
+            return {"status": "success", "message": "No data to export"}
+
+        # Вычисляем количество chunks
+        total_chunks = min(max_chunks, (total_count + chunk_size - 1) // chunk_size)
+        
+        # Обновляем параметры экспорта
+        export_file.is_chunked = True
+        export_file.total_chunks = total_chunks
+        export_file.chunk_size = chunk_size
+        export_file.save()
+
+        # Создаем chunk записи
+        chunks = []
+        for i in range(total_chunks):
+            chunk = ExportChunk.objects.create(
+                export_file=export_file,
+                chunk_number=i + 1,
+                filename=f"{export_file.filename}_part_{i + 1}.xlsx"
+            )
+            chunks.append(chunk)
+
+        # Запускаем задачи для каждого chunk
+        for chunk in chunks:
+            export_chunk_task.delay(chunk.id)
+
+        return {
+            "status": "success",
+            "export_file_id": export_file_id,
+            "total_chunks": total_chunks,
+            "chunk_size": chunk_size,
+            "total_records": total_count
+        }
+
+    except ExportFile.DoesNotExist:
+        return {"status": "error", "message": f"ExportFile with id {export_file_id} not found"}
+    except Exception as e:
+        try:
+            export_file = ExportFile.objects.get(id=export_file_id)
+            export_file.status = "failed"
+            export_file.error_message = str(e)
+            export_file.save()
+        except ExportFile.DoesNotExist:
+            pass
+        return {"status": "error", "message": str(e)}
+
+
+@shared_task(bind=True, soft_time_limit=600, time_limit=900)  # 10 min soft, 15 min hard
+def export_chunk_task(self, chunk_id):
+    """
+    Задача для экспорта отдельного chunk
+    """
+    try:
+        chunk = ExportChunk.objects.get(id=chunk_id)
+        chunk.status = "processing"
+        chunk.save()
+
+        # Получаем основной экспорт
+        export_file = chunk.export_file
+        resource = RespondentExportResource(
+            poll=export_file.poll,
+            include_unfinished=export_file.include_unfinished,
+        )
+        queryset = resource.get_export_queryset(None)
+        export_fields = resource.get_export_fields()
+
+        # Вычисляем offset и limit для этого chunk
+        offset = (chunk.chunk_number - 1) * export_file.chunk_size
+        limit = export_file.chunk_size
+
+        # Получаем данные для этого chunk
+        chunk_queryset = queryset[offset:offset + limit]
+
+        # Создаем Excel файл
+        wb = Workbook(write_only=True)
+        ws = wb.create_sheet(title="Respondents")
+
+        # Заголовки
+        headers = [f.column_name for f in export_fields]
+        ws.append(headers)
+
+        # Данные
+        rows_exported = 0
+        for respondent in chunk_queryset:
+            row = resource.export_resource(respondent)
+            ws.append([row.get(f.attribute or f.column_name, "") for f in export_fields])
+            rows_exported += 1
+
+        # Сохраняем файл
+        timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{chunk.filename}_{timestamp}.xlsx"
+
+        with NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+            wb.save(tmp.name)
+            tmp.seek(0)
+            chunk.file.save(filename, File(tmp), save=False)
+
+        # Обновляем chunk
+        chunk.filename = filename
+        chunk.rows_count = rows_exported
+        chunk.status = "completed"
+        chunk.completed_at = timezone.now()
+        chunk.save()
+
+        # Проверяем, завершен ли весь экспорт
+        check_export_completion.delay(export_file.id)
+
+        return {
+            "status": "success",
+            "chunk_id": chunk_id,
+            "rows_exported": rows_exported,
+            "filename": filename
+        }
+
+    except ExportChunk.DoesNotExist:
+        return {"status": "error", "message": f"ExportChunk with id {chunk_id} not found"}
+    except SoftTimeLimitExceeded:
+        try:
+            chunk = ExportChunk.objects.get(id=chunk_id)
+            chunk.status = "failed"
+            chunk.error_message = "Task timed out - chunk export took too long"
+            chunk.save()
+        except ExportChunk.DoesNotExist:
+            pass
+        return {"status": "error", "message": "Task timed out - chunk export took too long"}
+    except Exception as e:
+        try:
+            chunk = ExportChunk.objects.get(id=chunk_id)
+            chunk.status = "failed"
+            chunk.error_message = str(e)
+            chunk.save()
+        except ExportChunk.DoesNotExist:
+            pass
+        return {"status": "error", "message": str(e)}
+
+
+@shared_task(bind=True)
+def check_export_completion(self, export_file_id):
+    """
+    Проверяет, завершен ли весь chunked экспорт
+    """
+    try:
+        export_file = ExportFile.objects.get(id=export_file_id)
+        
+        # Проверяем статус всех chunks
+        completed_chunks = export_file.chunks.filter(status='completed').count()
+        failed_chunks = export_file.chunks.filter(status='failed').count()
+        total_chunks = export_file.total_chunks
+        
+        # Обновляем счетчик завершенных chunks
+        export_file.completed_chunks = completed_chunks
+        export_file.save()
+        
+        if completed_chunks >= total_chunks:
+            # Все chunks завершены
+            export_file.status = "completed"
+            export_file.completed_at = timezone.now()
+            export_file.save()
+            
+            return {
+                "status": "success",
+                "message": "All chunks completed",
+                "completed_chunks": completed_chunks,
+                "total_chunks": total_chunks
+            }
+        elif failed_chunks > 0 and (completed_chunks + failed_chunks) >= total_chunks:
+            # Есть неудачные chunks, но все chunks обработаны
+            export_file.status = "failed"
+            export_file.error_message = f"Some chunks failed. Completed: {completed_chunks}, Failed: {failed_chunks}"
+            export_file.save()
+            
+            return {
+                "status": "error",
+                "message": "Some chunks failed",
+                "completed_chunks": completed_chunks,
+                "failed_chunks": failed_chunks,
+                "total_chunks": total_chunks
+            }
+        else:
+            # Экспорт еще продолжается
+            return {
+                "status": "processing",
+                "message": "Export still in progress",
+                "completed_chunks": completed_chunks,
+                "total_chunks": total_chunks
+            }
+            
+    except ExportFile.DoesNotExist:
+        return {"status": "error", "message": f"ExportFile with id {export_file_id} not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

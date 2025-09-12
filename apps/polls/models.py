@@ -168,6 +168,24 @@ class ExportFile(models.Model):
         default=False,
         verbose_name=_('Включать незавершенные')
     )
+    
+    # Параметры для chunked экспорта
+    is_chunked = models.BooleanField(
+        default=False,
+        verbose_name=_('Разделен на части')
+    )
+    total_chunks = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_('Общее количество частей')
+    )
+    completed_chunks = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_('Завершенных частей')
+    )
+    chunk_size = models.PositiveIntegerField(
+        default=1000,
+        verbose_name=_('Размер части')
+    )
 
     class Meta:
         verbose_name = _('Файл экспорта')
@@ -202,6 +220,89 @@ class ExportFile(models.Model):
     def delete(self, *args, **kwargs):
         self.delete_file()
         super().delete(*args, **kwargs)
+    
+    def is_fully_completed(self):
+        """Проверяет, завершен ли весь chunked экспорт"""
+        if not self.is_chunked:
+            return self.status == 'completed'
+        return self.completed_chunks >= self.total_chunks
+    
+    def get_progress_percentage(self):
+        """Получить процент выполнения chunked экспорта"""
+        if not self.is_chunked:
+            return 100 if self.status == 'completed' else 0
+        if self.total_chunks == 0:
+            return 0
+        return round((self.completed_chunks / self.total_chunks) * 100, 1)
+
+
+class ExportChunk(models.Model):
+    """Модель для хранения отдельных частей chunked экспорта"""
+    
+    STATUS_CHOICES = [
+        ('pending', _('В ожидании')),
+        ('processing', _('Обрабатывается')),
+        ('completed', _('Завершено')),
+        ('failed', _('Ошибка')),
+    ]
+    
+    export_file = models.ForeignKey(
+        ExportFile,
+        on_delete=models.CASCADE,
+        related_name='chunks',
+        verbose_name=_('Основной экспорт')
+    )
+    chunk_number = models.PositiveIntegerField(
+        verbose_name=_('Номер части')
+    )
+    file = models.FileField(
+        upload_to=export_file_path,
+        verbose_name=_('Файл части'),
+        null=True,
+        blank=True
+    )
+    filename = models.CharField(
+        max_length=255,
+        verbose_name=_('Имя файла части')
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        verbose_name=_('Статус')
+    )
+    rows_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_('Количество строк')
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Дата создания')
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Дата завершения')
+    )
+    error_message = models.TextField(
+        blank=True,
+        verbose_name=_('Сообщение об ошибке')
+    )
+    
+    class Meta:
+        verbose_name = _('Часть экспорта')
+        verbose_name_plural = _('Части экспорта')
+        ordering = ['export_file', 'chunk_number']
+        unique_together = ['export_file', 'chunk_number']
+    
+    def __str__(self):
+        return f"{self.export_file.filename} - часть {self.chunk_number}"
+    
+    def get_file_url(self):
+        """Возвращает URL для скачивания файла части"""
+        if self.file and self.status == 'completed':
+            return self.file.url
+        return None
 
 
 class NotificationCampaign(models.Model):
