@@ -112,7 +112,8 @@ def start_notification_campaign_task(self, campaign_id):
         ).values_list('tg_user_id', flat=True).distinct()
         
         # Получаем всех пользователей, которые НЕ прошли опрос по данной теме
-        all_users = TGUser.objects.filter(is_active=True)
+        # Исключаем заблокированных пользователей
+        all_users = TGUser.objects.filter(is_active=True, blocked_bot=False)
         users_to_notify = all_users.exclude(id__in=users_who_completed)
         
         campaign.total_users = users_to_notify.count()
@@ -199,7 +200,8 @@ def send_notifications_chunk_task(self, campaign_id, user_ids, chunk_index):
         
         # Получаем пользователей для уведомления
         # В TGUser.id хранится telegram_id (chat_id для бота)
-        users = TGUser.objects.filter(id__in=user_ids, is_active=True)
+        # Исключаем заблокированных пользователей
+        users = TGUser.objects.filter(id__in=user_ids, is_active=True, blocked_bot=False)
         
         sent_count = 0
         failed_count = 0
@@ -250,6 +252,18 @@ def send_notifications_chunk_task(self, campaign_id, user_ids, chunk_index):
                 failed_count += 1
                 # Логируем ошибку, но продолжаем с другими пользователями
                 print(f"Failed to send notification to user {user.id}: {e}")
+                
+                # Проверяем, является ли ошибка связанной с блокировкой бота
+                error_message = str(e).lower()
+                if any(keyword in error_message for keyword in [
+                    'bot was blocked', 'user is deactivated', 'chat not found',
+                    'forbidden', 'blocked', 'deactivated', 'bot blocked by user'
+                ]):
+                    # Помечаем пользователя как заблокировавшего бота
+                    user.blocked_bot = True
+                    user.save()
+                    print(f"Marked user {user.id} as blocked_bot=True due to error: {e}")
+                
                 continue
         
         # Проверяем, завершена ли вся кампания

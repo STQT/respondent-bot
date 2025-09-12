@@ -331,6 +331,25 @@ class NotificationCampaign(models.Model):
 
     def __str__(self):
         return f"Уведомления по теме '{self.topic.name}' - {self.total_users} пользователей"
+    
+    def save(self, *args, **kwargs):
+        """Переопределяем save для автоматического расчета total_users"""
+        if not self.pk and self.topic:  # Новый объект с темой
+            from apps.users.models import TGUser
+            from .models import Respondent
+            
+            users_who_completed = Respondent.objects.filter(
+                poll=self.topic,
+                finished_at__isnull=False
+            ).values_list('tg_user_id', flat=True).distinct()
+            
+            # Исключаем заблокированных пользователей
+            all_users = TGUser.objects.filter(is_active=True, blocked_bot=False)
+            users_to_notify = all_users.exclude(id__in=users_who_completed)
+            
+            self.total_users = users_to_notify.count()
+        
+        super().save(*args, **kwargs)
 
     def get_progress_percentage(self):
         """Получить процент выполнения"""

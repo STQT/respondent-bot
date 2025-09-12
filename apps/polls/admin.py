@@ -253,9 +253,9 @@ class AnswerAdmin(admin.ModelAdmin):
 
 @admin.register(NotificationCampaign)
 class NotificationCampaignAdmin(admin.ModelAdmin):
-    list_display = ['topic', 'total_users', 'sent_users', 'status', 'created_at', 'started_at', 'completed_at']
+    list_display = ['topic', 'total_users', 'sent_users', 'get_blocked_users_count', 'status', 'created_at', 'started_at', 'completed_at']
     list_filter = ['status', 'topic', 'created_at']
-    readonly_fields = ['total_users', 'sent_users', 'created_at', 'started_at', 'completed_at', 'get_progress_percentage']
+    readonly_fields = ['total_users', 'sent_users', 'get_blocked_users_count', 'created_at', 'started_at', 'completed_at', 'get_progress_percentage']
     search_fields = ['topic__name']
     actions = ['start_notification_campaign']
     
@@ -264,7 +264,7 @@ class NotificationCampaignAdmin(admin.ModelAdmin):
             'fields': ('topic', 'status', 'error_message')
         }),
         ('Статистика', {
-            'fields': ('total_users', 'sent_users', 'get_progress_percentage'),
+            'fields': ('total_users', 'sent_users', 'get_blocked_users_count', 'get_progress_percentage'),
             'classes': ('collapse',)
         }),
         ('Временные метки', {
@@ -278,9 +278,29 @@ class NotificationCampaignAdmin(admin.ModelAdmin):
         return f"{obj.get_progress_percentage()}%"
     get_progress_percentage.short_description = 'Прогресс'
     
+    def get_blocked_users_count(self, obj):
+        """Отобразить количество заблокированных пользователей для данной темы"""
+        from apps.users.models import TGUser
+        from .models import Respondent
+        
+        # Получаем пользователей, которые не прошли опрос по данной теме
+        users_who_completed = Respondent.objects.filter(
+            poll=obj.topic,
+            finished_at__isnull=False
+        ).values_list('tg_user_id', flat=True).distinct()
+        
+        # Считаем заблокированных пользователей, которые не прошли опрос
+        blocked_users = TGUser.objects.filter(
+            is_active=True,
+            blocked_bot=True
+        ).exclude(id__in=users_who_completed).count()
+        
+        return blocked_users
+    get_blocked_users_count.short_description = 'Заблокированных'
+    
     def save_model(self, request, obj, form, change):
         """Custom save method to calculate total_users if not set"""
-        if not change and obj.total_users == 0:  # New object and total_users not set
+        if not change:  # New object - always calculate total_users
             # Calculate total_users based on users who haven't completed the poll
             from apps.users.models import TGUser
             from .models import Respondent
@@ -290,7 +310,8 @@ class NotificationCampaignAdmin(admin.ModelAdmin):
                 finished_at__isnull=False
             ).values_list('tg_user_id', flat=True).distinct()
             
-            all_users = TGUser.objects.filter(is_active=True)
+            # Исключаем заблокированных пользователей
+            all_users = TGUser.objects.filter(is_active=True, blocked_bot=False)
             users_to_notify = all_users.exclude(id__in=users_who_completed)
             
             obj.total_users = users_to_notify.count()
