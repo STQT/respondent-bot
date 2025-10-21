@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 verbose_name='Баланс'
             ),
         ),
-        migrations.AlterField(
+        migrations.AddField(
             model_name='tguser',
             name='lang',
             field=models.CharField(

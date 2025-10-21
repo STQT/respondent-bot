@@ -142,6 +142,47 @@ async def async_get_or_create_user(defaults=None, **kwargs):
 
 
 async def get_next_question(bot, chat_id, state: FSMContext, respondent, previous_questions, question_id):
+    from apps.bot.captcha_utils import should_show_captcha, generate_math_captcha, generate_text_captcha
+    from apps.polls.models import CaptchaChallenge, Answer
+    import random
+    
+    # Проверяем, нужна ли капча
+    answered_count = await sync_to_async(
+        Answer.objects.filter(respondent=respondent, is_answered=True).count
+    )()
+    
+    user = await sync_to_async(lambda: respondent.tg_user)()
+    
+    if should_show_captcha(answered_count):
+        # Генерируем капчу
+        captcha_type = random.choice(['math', 'text'])
+        
+        if captcha_type == 'math':
+            question_text, correct_answer = generate_math_captcha(user.lang)
+        else:
+            question_text, correct_answer = generate_text_captcha(user.lang)
+        
+        # Сохраняем капчу в базу
+        captcha = await sync_to_async(CaptchaChallenge.objects.create)(
+            respondent=respondent,
+            captcha_type=captcha_type,
+            question=question_text,
+            correct_answer=correct_answer
+        )
+        
+        # Отправляем капчу пользователю
+        await bot.send_message(chat_id, question_text, parse_mode="HTML")
+        
+        # Устанавливаем состояние ожидания капчи
+        await state.set_state(PollStates.waiting_for_captcha)
+        await state.update_data(
+            captcha_id=captcha.id,
+            respondent_id=respondent.id,
+            previous_questions=previous_questions,
+            question_id=question_id
+        )
+        return
+    
     all_questions = await sync_to_async(lambda: respondent.poll.questions.order_by("order"))()
     answered_ids = await sync_to_async(list)(
         Answer.objects.filter(respondent=respondent).values_list('question_id', flat=True)

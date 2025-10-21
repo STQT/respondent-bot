@@ -9,7 +9,7 @@ from django.utils import timezone
 
 
 from apps.polls.filters import PollFilterForm
-from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, ExportChunk, NotificationCampaign, BroadcastPost
+from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, ExportChunk, NotificationCampaign, BroadcastPost, CaptchaChallenge
 from apps.polls.resources import RespondentExportResource
 from apps.polls.tasks import export_respondents_task
 
@@ -493,3 +493,30 @@ class BroadcastPostAdmin(admin.ModelAdmin):
         messages.success(request, f'Тестовый пост отправлен администратору (ID: {admin_test_id}). Задача ID: {task.id}')
     
     send_test_broadcast_admin.short_description = "Тест администратору"
+
+
+@admin.register(CaptchaChallenge)
+class CaptchaChallengeAdmin(admin.ModelAdmin):
+    list_display = ['respondent', 'captcha_type', 'is_correct', 'attempts', 'created_at', 'solved_at']
+    list_filter = ['captcha_type', 'is_correct', 'created_at']
+    search_fields = ['respondent__tg_user__fullname', 'respondent__tg_user__username', 'question']
+    readonly_fields = ['created_at', 'solved_at']
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('respondent', 'captcha_type', 'question', 'correct_answer')
+        }),
+        ('Ответ пользователя', {
+            'fields': ('user_answer', 'is_correct', 'attempts')
+        }),
+        ('Временные метки', {
+            'fields': ('created_at', 'solved_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        return False  # Капчи создаются автоматически
+    
+    def has_change_permission(self, request, obj=None):
+        return False  # Капчи не редактируются вручную

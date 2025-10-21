@@ -112,6 +112,64 @@ class Answer(models.Model):
         verbose_name_plural = _("Ответы")
 
 
+class CaptchaChallenge(models.Model):
+    """Модель для хранения капчи (антибот проверка)"""
+    
+    CAPTCHA_TYPES = [
+        ('math', _('Математическая задача')),
+        ('text', _('Текстовая задача')),
+    ]
+    
+    respondent = models.ForeignKey(
+        Respondent,
+        on_delete=models.CASCADE,
+        related_name='captcha_challenges',
+        verbose_name=_("Респондент")
+    )
+    captcha_type = models.CharField(
+        max_length=20,
+        choices=CAPTCHA_TYPES,
+        verbose_name=_("Тип капчи")
+    )
+    question = models.TextField(
+        verbose_name=_("Вопрос")
+    )
+    correct_answer = models.CharField(
+        max_length=255,
+        verbose_name=_("Правильный ответ")
+    )
+    user_answer = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Ответ пользователя")
+    )
+    is_correct = models.BooleanField(
+        default=False,
+        verbose_name=_("Правильный?")
+    )
+    attempts = models.IntegerField(
+        default=0,
+        verbose_name=_("Количество попыток")
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Дата создания")
+    )
+    solved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Дата решения")
+    )
+    
+    class Meta:
+        verbose_name = _("Капча")
+        verbose_name_plural = _("Капчи")
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Капча для {self.respondent.tg_user.fullname} - {self.get_captcha_type_display()}"
+
+
 def export_file_path(instance, filename):
     """Генерирует путь для файла экспорта"""
     return f'exports/{instance.created_at.strftime("%Y/%m/%d")}/{filename}'
