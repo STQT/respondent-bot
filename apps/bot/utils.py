@@ -151,15 +151,42 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
     if not next_question:
         respondent.finished_at = timezone.now()
         await respondent.asave()
-        await bot.send_message(
-            chat_id,
-            str(_(
+        
+        # Начисляем вознаграждение за прохождение опроса
+        poll = await sync_to_async(lambda: respondent.poll)()
+        user = await sync_to_async(lambda: respondent.tg_user)()
+        
+        if poll.reward > 0:
+            # Начисляем деньги на баланс
+            user.balance += poll.reward
+            await sync_to_async(user.save)()
+            
+            # Создаем транзакцию
+            from apps.users.models import TransactionHistory
+            await sync_to_async(TransactionHistory.objects.create)(
+                user=user,
+                transaction_type='earned',
+                amount=poll.reward,
+                description=f'Вознаграждение за прохождение опроса "{poll.name}"',
+                related_poll=poll
+            )
+            
+            completion_message = str(_(
+                "Сиз сўровномани тўлиқ якунладингиз. Раҳмат!\n\n"
+                "💰 Сизга {reward} сўм ҳисобингизга қўшилди!\n\n"
+                "Сизнинг фикрингиз биз учун жуда муҳим.\n"
+                "Иштирокингиз орқали муҳим ислоҳотлар ва қарорлар шакллантирилади.\n"
+                "Янги сўровларда ҳам фаол иштирок этишингизни кутамиз!"
+            )).format(reward=poll.reward)
+        else:
+            completion_message = str(_(
                 "Сиз сўровномани тўлиқ якунладингиз. Раҳмат!\n\n"
                 "Сизнинг фикрингиз биз учун жуда муҳим.\n"
                 "Иштирокингиз орқали муҳим ислоҳотлар ва қарорлар шакллантирилади.\n"
                 "Янги сўровларда ҳам фаол иштирок этишингизни кутамиз!"
             ))
-        )
+        
+        await bot.send_message(chat_id, completion_message)
         await state.clear()
         return
 

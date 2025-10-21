@@ -15,6 +15,13 @@ class Poll(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     description = models.TextField()
     deadline = models.DateTimeField()
+    reward = models.DecimalField(
+        verbose_name=_("Вознаграждение"),
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        help_text=_("Сумма вознаграждения за прохождение опроса")
+    )
 
     def is_active(self):
         return timezone.now() <= self.deadline

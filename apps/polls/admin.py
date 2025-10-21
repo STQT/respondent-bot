@@ -32,8 +32,9 @@ class QuestionInline(admin.StackedInline):
 
 @admin.register(Poll)
 class PollAdmin(admin.ModelAdmin):
-    list_display = ('name', 'uuid', 'deadline', 'is_active_status')
+    list_display = ('name', 'uuid', 'reward', 'deadline', 'is_active_status')
     inlines = [QuestionInline]
+    list_editable = ('reward',)
 
     def is_active_status(self, obj):
         return obj.is_active()

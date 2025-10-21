@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 from apps.bot.handlers.echo import echo_router
 from apps.bot.handlers.start import start_router
 from apps.bot.handlers.poll import poll_router
+from apps.bot.handlers.menu import menu_router
 from apps.bot.middlewares import UserInternalIdMiddleware
 from apps.bot.middlewares import ForbiddenUserMiddleware
 
@@ -28,6 +29,7 @@ def register_all_misc() -> (Dispatcher, Bot):
     dp.update.outer_middleware(ForbiddenUserMiddleware())
     # Register all the routers from handlers package
     routers = (
+        menu_router,
         start_router,
         poll_router,
         echo_router

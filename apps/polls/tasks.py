@@ -807,3 +807,126 @@ def check_export_completion(self, export_file_id):
         return {"status": "error", "message": f"ExportFile with id {export_file_id} not found"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@shared_task(bind=True, soft_time_limit=300, time_limit=360)  # 5 min soft, 6 min hard
+def send_update_notification_task(self, user_ids, chunk_index, custom_message=None):
+    """
+    Отправляет уведомление об обновлении группе пользователей (до 100 человек).
+    Учитывает интервал отправки для избежания блокировки.
+    """
+    try:
+        from apps.users.models import TGUser
+        from apps.bot.misc import get_bot_instance
+        import time
+        
+        # Получаем пользователей для уведомления
+        users = TGUser.objects.filter(id__in=user_ids, is_active=True, blocked_bot=False)
+        
+        # Определяем сообщение для каждого языка
+        if custom_message:
+            messages = {
+                'uz_cyrl': custom_message,
+                'uz_latn': custom_message,
+                'ru': custom_message
+            }
+        else:
+            messages = {
+                'uz_cyrl': (
+                    "🎉 <b>Янгиланиш!</b>\n\n"
+                    "Ботда янги имкониятлар қўшилди:\n\n"
+                    "💰 <b>Пул ишлаш</b> - Сўровномаларни тўлдириб пул ишлаб топинг!\n"
+                    "📊 Актив ва якунланган сўровномаларни кўринг\n"
+                    "💳 Ишлаб топган пулларингизни чиқаришингиз мумкин\n"
+                    "🌐 Тилни ўзгартириш имкони\n\n"
+                    "Бошлаш учун /menu буйруғини юборинг!"
+                ),
+                'uz_latn': (
+                    "🎉 <b>Yangilanish!</b>\n\n"
+                    "Botda yangi imkoniyatlar qo'shildi:\n\n"
+                    "💰 <b>Pul ishlash</b> - So'rovnomalarni to'ldirib pul ishlab toping!\n"
+                    "📊 Aktiv va yakunlangan so'rovnomalarni ko'ring\n"
+                    "💳 Ishlab topgan pullaringizni chiqarishingiz mumkin\n"
+                    "🌐 Tilni o'zgartirish imkoni\n\n"
+                    "Boshlash uchun /menu buyrug'ini yuboring!"
+                ),
+                'ru': (
+                    "🎉 <b>Обновление!</b>\n\n"
+                    "В боте появились новые возможности:\n\n"
+                    "💰 <b>Заработок</b> - Зарабатывайте деньги, заполняя опросы!\n"
+                    "📊 Просматривайте активные и завершенные опросы\n"
+                    "💳 Выводите заработанные деньги\n"
+                    "🌐 Возможность смены языка\n\n"
+                    "Чтобы начать, отправьте команду /menu!"
+                )
+            }
+        
+        sent_count = 0
+        failed_count = 0
+        
+        for i, user in enumerate(users):
+            try:
+                # Получаем сообщение на языке пользователя
+                message_text = messages.get(user.lang, messages['uz_cyrl'])
+                
+                # Отправляем сообщение синхронно
+                bot = get_bot_instance()
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(
+                        bot.send_message(
+                            chat_id=user.id,
+                            text=message_text,
+                            parse_mode="HTML"
+                        )
+                    )
+                finally:
+                    # Правильно закрываем сессию бота
+                    loop.run_until_complete(bot.session.close())
+                    loop.close()
+                
+                sent_count += 1
+                
+                # Пауза между отправками (1 секунда)
+                if i < len(users) - 1:  # Не ждем после последнего пользователя
+                    time.sleep(1)
+                
+            except Exception as e:
+                failed_count += 1
+                # Логируем ошибку, но продолжаем с другими пользователями
+                print(f"Failed to send update notification to user {user.id}: {e}")
+                
+                # Проверяем, является ли ошибка связанной с блокировкой бота
+                error_message = str(e).lower()
+                if any(keyword in error_message for keyword in [
+                    'bot was blocked', 'user is deactivated', 'chat not found',
+                    'forbidden', 'blocked', 'deactivated', 'bot blocked by user'
+                ]):
+                    # Помечаем пользователя как заблокировавшего бота
+                    user.blocked_bot = True
+                    user.save()
+                    print(f"Marked user {user.id} as blocked_bot=True due to error: {e}")
+                
+                continue
+        
+        return {
+            'status': 'success',
+            'chunk_index': chunk_index,
+            'sent_count': sent_count,
+            'failed_count': failed_count,
+            'message': f'Chunk {chunk_index}: sent {sent_count}, failed {failed_count}'
+        }
+        
+    except SoftTimeLimitExceeded:
+        return {
+            'status': 'error',
+            'message': f'Chunk {chunk_index} timed out'
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'chunk_index': chunk_index,
+            'message': str(e)
+        }
