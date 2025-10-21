@@ -55,18 +55,29 @@ async def poll_checker(bot, chat_id, question, options):
 
 
 async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, respondent: Respondent, question: Question):
+    # Получаем язык пользователя
+    user = await sync_to_async(lambda: respondent.tg_user)()
+    user_lang = user.lang if hasattr(user, 'lang') else 'uz_cyrl'
+    
     choices = await sync_to_async(list)(question.choices.all().order_by("order"))
     allows_multiple_answers = question.type in (
         Question.QuestionTypeChoices.CLOSED_MULTIPLE,
         Question.QuestionTypeChoices.MIXED_MULTIPLE
     )
+    
+    # Получаем текст вопроса на языке пользователя
+    question_text = await sync_to_async(question.get_text)(user_lang)
 
     # 💬 Открытый или смешанный вопрос — отправим текст
     if question.type == Question.QuestionTypeChoices.OPEN:
-        await bot.send_message(
-            chat_id,
-            f"📨 {question.text}\n\nИлтимос, жавобингизни матн сифатида юборинг ✍️"
-        )
+        prompt_texts = {
+            'uz_cyrl': f"📨 {question_text}\n\nИлтимос, жавобингизни матн сифатида юборинг ✍️",
+            'uz_latn': f"📨 {question_text}\n\nIltimos, javobingizni matn sifatida yuboring ✍️",
+            'ru': f"📨 {question_text}\n\nПожалуйста, отправьте ваш ответ текстом ✍️"
+        }
+        prompt = prompt_texts.get(user_lang, prompt_texts['uz_cyrl'])
+        
+        await bot.send_message(chat_id, prompt)
 
         # Создаём пустой Answer для отслеживания
         answer = await Answer.objects.filter(
@@ -88,17 +99,28 @@ async def send_poll_question(bot: Bot, chat_id: int, state: FSMContext, responde
         return
 
     # 📊 Закрытый вопрос — отправим Telegram poll
-    options = [choice.text for choice in choices]
+    # Получаем тексты вариантов на языке пользователя
+    options = []
+    for choice in choices:
+        choice_text = await sync_to_async(choice.get_text)(user_lang)
+        options.append(choice_text)
+    
     if question.type in [
         Question.QuestionTypeChoices.MIXED,
         Question.QuestionTypeChoices.MIXED_MULTIPLE
     ]:
-        options.append(ANOTHER_STR)
+        # Текст "Бошқа" на разных языках
+        another_texts = {
+            'uz_cyrl': str(_("Бошқа(ёзинг)__________")),
+            'uz_latn': "Boshqa (yozing)__________",
+            'ru': "Другое (напишите)__________"
+        }
+        options.append(another_texts.get(user_lang, str(ANOTHER_STR)))
 
     if await poll_checker(bot, chat_id, question, options) is True:
         poll_message = await bot.send_poll(
             chat_id=chat_id,
-            question=question.text,
+            question=question_text,  # Используем уже полученный текст на нужном языке
             options=options,
             is_anonymous=False,
             allows_multiple_answers=allows_multiple_answers,
@@ -244,9 +266,15 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
         return
 
     if not respondent.history:
+        # Получаем описание на языке пользователя
+        user = await sync_to_async(lambda: respondent.tg_user)()
+        user_lang = user.lang if hasattr(user, 'lang') else 'uz_cyrl'
+        poll = await sync_to_async(lambda: respondent.poll)()
+        description = await sync_to_async(poll.get_description)(user_lang)
+        
         await bot.send_message(
             chat_id,
-            str(respondent.poll.description),
+            description,
             parse_mode="Markdown"
         )
 
@@ -333,24 +361,38 @@ async def send_confirmation_text(bot, answer, open_answer=None):
     if not answer.telegram_chat_id:
         print(f"❌ Ошибка: telegram_chat_id отсутствует для Answer ID={answer.id}")
         return
+    
+    # Получаем язык пользователя
+    respondent = await sync_to_async(lambda: answer.respondent)()
+    user = await sync_to_async(lambda: respondent.tg_user)()
+    user_lang = user.lang if hasattr(user, 'lang') else 'uz_cyrl'
+    
     # ✅ Подтверждение ответа + % выполнения
     total_questions = await sync_to_async(lambda: answer.respondent.poll.questions.count())()
     answered_count = await sync_to_async(
         lambda: Answer.objects.filter(respondent=answer.respondent, is_answered=True).count())()
     progress = int((answered_count / total_questions) * 100)
+    
     # 🧾 Собираем текст ответа (один или несколько)
     question = await sync_to_async(lambda: answer.question)()
+    question_text = await sync_to_async(question.get_text)(user_lang)
+    
     if question.type in (
             Question.QuestionTypeChoices.CLOSED_MULTIPLE,
             Question.QuestionTypeChoices.MIXED_MULTIPLE
     ):
         selected_choices = await sync_to_async(list)(answer.selected_choices.all())
-        selected_text = "\n".join([f"• {choice.text}" for choice in selected_choices])
+        selected_texts = []
+        for choice in selected_choices:
+            choice_text = await sync_to_async(choice.get_text)(user_lang)
+            selected_texts.append(f"• {choice_text}")
+        selected_text = "\n".join(selected_texts)
     else:
         selected_choices = await sync_to_async(list)(answer.selected_choices.all())
         selected_text = ""
         if selected_choices:
-            selected_text += f"\n• {selected_choices[0].text}"
+            choice_text = await sync_to_async(selected_choices[0].get_text)(user_lang)
+            selected_text += f"\n• {choice_text}"
 
     if open_answer:
         selected_text += f"\n• {open_answer}\n"
@@ -358,15 +400,23 @@ async def send_confirmation_text(bot, answer, open_answer=None):
     def render_progress_bar(progress: int, total_blocks: int = 10) -> str:
         filled_blocks = int((progress / 100) * total_blocks)
         empty_blocks = total_blocks - filled_blocks
-        return "█" * filled_blocks + "░" * empty_blocks  # или ▓ и ░ для более мягкого стиля
+        return "█" * filled_blocks + "░" * empty_blocks
 
     progress_bar = render_progress_bar(progress)
 
+    # Тексты подтверждения на разных языках
+    confirmation_labels = {
+        'uz_cyrl': f"✅ Сиз танлаган жавоб(лар):\n{selected_text}\n\nБитирганлилиги:",
+        'uz_latn': f"✅ Siz tanlagan javob(lar):\n{selected_text}\n\nTamomlanganligi:",
+        'ru': f"✅ Вы выбрали:\n{selected_text}\n\nПрогресс:"
+    }
+    
+    confirmation_label = confirmation_labels.get(user_lang, confirmation_labels['uz_cyrl'])
+
     # 💬 Формируем текст подтверждения
     confirmation_text = (
-        f"<b>{answer.question.text}</b>\n\n"
-        f"✅ Сиз танлаган жавоб(лар):\n{selected_text}\n\n"
-        f"Битирганлилиги: \n"
+        f"<b>{question_text}</b>\n\n"
+        f"{confirmation_label} \n"
         f"{progress_bar} <b>{progress}%</b>"
     )
 

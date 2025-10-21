@@ -13,7 +13,20 @@ from apps.users.models import TGUser
 class Poll(models.Model):
     name = models.CharField(max_length=255)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    description = models.TextField()
+    
+    # Мультиязычные описания
+    description = models.TextField(verbose_name=_("Описание (узбекский кириллица)"))
+    description_uz_latn = models.TextField(
+        blank=True,
+        verbose_name=_("Описание (узбекский латиница)"),
+        help_text=_("Если пустое, будет использовано основное описание")
+    )
+    description_ru = models.TextField(
+        blank=True,
+        verbose_name=_("Описание (русский)"),
+        help_text=_("Если пустое, будет использовано основное описание")
+    )
+    
     deadline = models.DateTimeField()
     reward = models.DecimalField(
         verbose_name=_("Вознаграждение"),
@@ -25,6 +38,14 @@ class Poll(models.Model):
 
     def is_active(self):
         return timezone.now() <= self.deadline
+    
+    def get_description(self, lang='uz_cyrl'):
+        """Получить описание на нужном языке"""
+        if lang == 'uz_latn' and self.description_uz_latn:
+            return self.description_uz_latn
+        elif lang == 'ru' and self.description_ru:
+            return self.description_ru
+        return self.description
 
     def __str__(self):
         return self.name
@@ -43,37 +64,76 @@ class Question(models.Model):
         MIXED_MULTIPLE = "mixed_multiple", _("Смешанный — несколько ответов")
 
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name='questions')
-    text = models.TextField()
+    
+    # Мультиязычные тексты вопроса
+    text = models.TextField(verbose_name=_("Текст (узбекский кириллица)"))
+    text_uz_latn = models.TextField(
+        blank=True,
+        verbose_name=_("Текст (узбекский латиница)"),
+        help_text=_("Если пустое, будет использован основной текст")
+    )
+    text_ru = models.TextField(
+        blank=True,
+        verbose_name=_("Текст (русский)"),
+        help_text=_("Если пустое, будет использован основной текст")
+    )
+    
     type = models.CharField(max_length=20, choices=QuestionTypeChoices.choices)
     max_choices = models.PositiveIntegerField(null=True, blank=True, help_text='Только для closed_multiple')
-
     order = models.PositiveIntegerField(default=0)
+
+    def get_text(self, lang='uz_cyrl'):
+        """Получить текст вопроса на нужном языке"""
+        if lang == 'uz_latn' and self.text_uz_latn:
+            return self.text_uz_latn
+        elif lang == 'ru' and self.text_ru:
+            return self.text_ru
+        return self.text
 
     class Meta:
         ordering = ['order']
+        verbose_name = _("Вопрос")
+        verbose_name_plural = _("Вопросы")
 
     def __str__(self):
         return self.text
 
-    class Meta:
-        verbose_name = _("Вопрос")
-        verbose_name_plural = _("Вопросы")
-
 
 class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices')
-    text = models.CharField(max_length=255)
+    
+    # Мультиязычные тексты варианта
+    text = models.CharField(max_length=255, verbose_name=_("Текст (узбекский кириллица)"))
+    text_uz_latn = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Текст (узбекский латиница)"),
+        help_text=_("Если пустое, будет использован основной текст")
+    )
+    text_ru = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Текст (русский)"),
+        help_text=_("Если пустое, будет использован основной текст")
+    )
+    
     order = models.PositiveIntegerField(default=0)
+
+    def get_text(self, lang='uz_cyrl'):
+        """Получить текст варианта на нужном языке"""
+        if lang == 'uz_latn' and self.text_uz_latn:
+            return self.text_uz_latn
+        elif lang == 'ru' and self.text_ru:
+            return self.text_ru
+        return self.text
 
     class Meta:
         ordering = ['order']
+        verbose_name = _("Выбор")
+        verbose_name_plural = _("Выборки")
 
     def __str__(self):
         return f"{self.order}. {self.text}"
-
-    class Meta:
-        verbose_name = _("Выбор")
-        verbose_name_plural = _("Выборки")
 
 
 class Respondent(models.Model):

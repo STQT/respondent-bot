@@ -17,6 +17,7 @@ from apps.polls.tasks import export_respondents_task
 class ChoiceInline(admin.TabularInline):
     model = Choice
     extra = 1
+    fields = ('text', 'text_uz_latn', 'text_ru', 'order')
 
     def get_max_num(self, request, obj=None, **kwargs):
         if obj and obj.type == Question.QuestionTypeChoices.MIXED:
@@ -35,6 +36,25 @@ class PollAdmin(admin.ModelAdmin):
     list_display = ('name', 'uuid', 'reward', 'deadline', 'is_active_status')
     inlines = [QuestionInline]
     list_editable = ('reward',)
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('name', 'uuid', 'deadline', 'reward')
+        }),
+        ('Описание (узбекский кириллица)', {
+            'fields': ('description',)
+        }),
+        ('Описание (узбекский латиница)', {
+            'fields': ('description_uz_latn',),
+            'classes': ('collapse',)
+        }),
+        ('Описание (русский)', {
+            'fields': ('description_ru',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ('uuid',)
 
     def is_active_status(self, obj):
         return obj.is_active()
@@ -49,6 +69,23 @@ class QuestionAdmin(admin.ModelAdmin):
     list_editable = ('order', 'max_choices')
     inlines = [ChoiceInline]
     list_filter = ('poll', 'type')
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('poll', 'type', 'max_choices', 'order')
+        }),
+        ('Текст вопроса (узбекский кириллица)', {
+            'fields': ('text',)
+        }),
+        ('Текст вопроса (узбекский латиница)', {
+            'fields': ('text_uz_latn',),
+            'classes': ('collapse',)
+        }),
+        ('Текст вопроса (русский)', {
+            'fields': ('text_ru',),
+            'classes': ('collapse',)
+        }),
+    )
 
 
 class ExportChunkInline(admin.TabularInline):
