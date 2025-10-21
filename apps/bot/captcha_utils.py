@@ -88,18 +88,18 @@ def generate_text_captcha(lang='uz_cyrl') -> Tuple[str, str]:
 def should_show_captcha(answered_count: int) -> bool:
     """
     Определяет, нужно ли показать капчу
-    Показываем капчу случайно, примерно каждые 3-5 вопросов
+    Показываем капчу только на определенных вопросах
     """
-    # Не показываем на первых 2 вопросах
-    if answered_count < 2:
+    # Не показываем на первых 3 вопросах
+    if answered_count < 3:
         return False
     
-    # После 2 вопросов - случайная проверка (30% вероятность)
-    # Или обязательно каждые 5 вопросов
-    if answered_count % 5 == 0:
+    # Показываем только на определенных вопросах: 5, 10, 15 и т.д.
+    # Это даст капчу каждые 5 вопросов ОПРОСА (не капчи)
+    if answered_count in [5, 10, 15, 20, 25, 30]:
         return True
     
-    return random.random() < 0.3
+    return False
 
 
 def get_captcha_error_message(lang='uz_cyrl', attempts=0) -> str:

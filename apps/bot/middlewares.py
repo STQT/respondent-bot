@@ -37,10 +37,21 @@ class UserInternalIdMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        user = data["event_from_user"]
-        data["user"] = await self.get_internal_user(
-            user_id=user.id, full_name=user.full_name, username=user.username
-        )
+        # Получаем пользователя из разных источников
+        user = data.get("event_from_user")
+        
+        # Для poll_answer пользователь находится в event.user
+        if not user and hasattr(event, 'user'):
+            user = event.user
+        
+        # Если пользователь найден, получаем/создаем его в базе
+        if user:
+            data["user"] = await self.get_internal_user(
+                user_id=user.id, full_name=user.full_name, username=user.username
+            )
+        else:
+            data["user"] = None
+        
         return await handler(event, data)
 
 

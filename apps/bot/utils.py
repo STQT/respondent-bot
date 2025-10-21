@@ -144,6 +144,7 @@ async def async_get_or_create_user(defaults=None, **kwargs):
 async def get_next_question(bot, chat_id, state: FSMContext, respondent, previous_questions, question_id):
     from apps.bot.captcha_utils import should_show_captcha, generate_math_captcha, generate_text_captcha
     from apps.polls.models import CaptchaChallenge, Answer
+    from datetime import timedelta
     import random
     
     # Проверяем, нужна ли капча
@@ -153,7 +154,18 @@ async def get_next_question(bot, chat_id, state: FSMContext, respondent, previou
     
     user = await sync_to_async(lambda: respondent.tg_user)()
     
-    if should_show_captcha(answered_count):
+    # Проверяем, была ли капча показана недавно (в последние 30 секунд)
+    recent_captcha = await sync_to_async(
+        CaptchaChallenge.objects.filter(
+            respondent=respondent,
+            created_at__gte=timezone.now() - timedelta(seconds=30)
+        ).exists
+    )()
+    
+    # Показываем капчу только если:
+    # 1. Настало время (по answered_count)
+    # 2. И не было капчи в последние 30 секунд
+    if should_show_captcha(answered_count) and not recent_captcha:
         # Генерируем капчу
         captcha_type = random.choice(['math', 'text'])
         
