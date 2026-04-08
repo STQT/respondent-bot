@@ -18,12 +18,12 @@ RUN chown -R pgbouncer:pgbouncer /etc/pgbouncer
 COPY compose/production/postgres/maintenance /usr/local/bin/maintenance
 RUN chmod +x /usr/local/bin/maintenance/*
 
-# Настройки PostgreSQL
-RUN echo "max_connections = 300" >> /var/lib/postgresql/data/postgresql.conf
-
 # Перемещаем скрипты
 RUN mv /usr/local/bin/maintenance/* /usr/local/bin \
     && rmdir /usr/local/bin/maintenance
+
+# Настройки PostgreSQL при первом initdb
+COPY compose/production/postgres/initdb.d/ /docker-entrypoint-initdb.d/
 
 # Копируем скрипт запуска PgBouncer
 COPY compose/production/postgres/start-pgbouncer.sh /usr/local/bin/start-pgbouncer.sh
