@@ -1,0 +1,82 @@
+{% extends "polls_webapp/base.html" %}
+
+{% block content %}
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header fw-semibold">Опрос</div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div class="mb-3">
+              <label class="form-label">Название</label>
+              {{ form.name }}
+              <div class="text-danger small">{{ form.name.errors }}</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Дедлайн</label>
+              {{ form.deadline }}
+              <div class="text-danger small">{{ form.deadline.errors }}</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Вознаграждение</label>
+              {{ form.reward }}
+              <div class="text-danger small">{{ form.reward.errors }}</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Описание (узбекский кириллица)</label>
+              {{ form.description }}
+              <div class="text-danger small">{{ form.description.errors }}</div>
+            </div>
+
+            <details class="mb-3">
+              <summary class="mb-2">Доп. языки</summary>
+              <div class="mb-3">
+                <label class="form-label">Описание (узбекский латиница)</label>
+                {{ form.description_uz_latn }}
+                <div class="text-danger small">{{ form.description_uz_latn.errors }}</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Описание (русский)</label>
+                {{ form.description_ru }}
+                <div class="text-danger small">{{ form.description_ru.errors }}</div>
+              </div>
+            </details>
+
+            <button class="btn btn-primary" type="submit">Сохранить</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header fw-semibold">Вопросы</div>
+        <div class="card-body">
+          <div id="questionList">
+            {% include "polls_webapp/partials/question_list.html" with poll=poll questions=questions %}
+          </div>
+
+          <hr />
+
+          <div class="fw-semibold mb-2">Добавить вопрос</div>
+          <form
+            hx-post="{% url 'polls_webapp:question_create' poll.uuid %}"
+            hx-target="#questionList"
+            hx-swap="innerHTML"
+          >
+            {% csrf_token %}
+            {% include "polls_webapp/partials/question_form.html" with poll=poll form=question_form %}
+            <button class="btn btn-outline-primary btn-sm" type="submit">Добавить</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+

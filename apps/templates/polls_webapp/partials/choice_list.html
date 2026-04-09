@@ -1,0 +1,18 @@
+<div class="list-group">
+  {% for ch in choices %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <div>{{ ch.order }}. {{ ch.text }}</div>
+      <form
+        hx-post="{% url 'polls_webapp:choice_delete' poll.uuid question.id ch.id %}"
+        hx-target="#choiceList"
+        hx-swap="innerHTML"
+      >
+        {% csrf_token %}
+        <button class="btn btn-outline-danger btn-sm" type="submit">Удалить</button>
+      </form>
+    </div>
+  {% empty %}
+    <div class="text-muted">Вариантов пока нет.</div>
+  {% endfor %}
+</div>
+

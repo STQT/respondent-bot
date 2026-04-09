@@ -13,6 +13,14 @@ from apps.users.models import TGUser
 class Poll(models.Model):
     name = models.CharField(max_length=255)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_by = models.ForeignKey(
+        TGUser,
+        on_delete=models.PROTECT,
+        related_name="created_polls",
+        null=True,
+        blank=True,
+        verbose_name=_("Создатель (TG)"),
+    )
     
     # Мультиязычные описания
     description = models.TextField(verbose_name=_("Описание (узбекский кириллица)"))
@@ -228,6 +236,97 @@ class CaptchaChallenge(models.Model):
     
     def __str__(self):
         return f"Капча для {self.respondent.tg_user.fullname} - {self.get_captcha_type_display()}"
+
+
+class PollCreationPayment(models.Model):
+    class Status(TextChoices):
+        PENDING = "pending", _("Ожидает подтверждения")
+        APPROVED = "approved", _("Подтверждено")
+        REJECTED = "rejected", _("Отклонено")
+        CANCELLED = "cancelled", _("Отменено")
+
+    tg_user = models.ForeignKey(
+        TGUser,
+        on_delete=models.CASCADE,
+        related_name="poll_creation_payments",
+        verbose_name=_("Пользователь телеграм"),
+    )
+    amount = models.DecimalField(
+        verbose_name=_("Сумма"),
+        max_digits=10,
+        decimal_places=2,
+        default=50000.00,
+    )
+    currency = models.CharField(
+        verbose_name=_("Валюта"),
+        max_length=8,
+        default="UZS",
+    )
+    status = models.CharField(
+        verbose_name=_("Статус"),
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    proof = models.TextField(
+        verbose_name=_("Подтверждение оплаты"),
+        blank=True,
+        help_text=_("Текст/номер транзакции/комментарий пользователя"),
+    )
+
+    approved_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="approved_poll_creation_payments",
+        verbose_name=_("Подтвердил"),
+    )
+    approved_at = models.DateTimeField(
+        verbose_name=_("Дата подтверждения"),
+        null=True,
+        blank=True,
+    )
+
+    consumed_poll = models.ForeignKey(
+        Poll,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="consuming_payments",
+        verbose_name=_("Опрос (использовано)"),
+    )
+    consumed_at = models.DateTimeField(
+        verbose_name=_("Дата использования"),
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        verbose_name=_("Дата создания"),
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        verbose_name=_("Дата обновления"),
+        auto_now=True,
+    )
+
+    class Meta:
+        verbose_name = _("Оплата создания опроса")
+        verbose_name_plural = _("Оплаты создания опросов")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tg_user", "status"]),
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.tg_user_id}: {self.amount} {self.currency} ({self.status})"
+
+    @property
+    def is_consumed(self) -> bool:
+        return self.consumed_at is not None or self.consumed_poll_id is not None
 
 
 def export_file_path(instance, filename):

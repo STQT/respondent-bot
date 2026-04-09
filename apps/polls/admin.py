@@ -9,7 +9,19 @@ from django.utils import timezone
 
 
 from apps.polls.filters import PollFilterForm
-from apps.polls.models import Poll, Question, Choice, Respondent, Answer, ExportFile, ExportChunk, NotificationCampaign, BroadcastPost, CaptchaChallenge
+from apps.polls.models import (
+    Poll,
+    Question,
+    Choice,
+    Respondent,
+    Answer,
+    ExportFile,
+    ExportChunk,
+    NotificationCampaign,
+    BroadcastPost,
+    CaptchaChallenge,
+    PollCreationPayment,
+)
 from apps.polls.resources import RespondentExportResource
 from apps.polls.tasks import export_respondents_task
 
@@ -33,7 +45,7 @@ class QuestionInline(admin.StackedInline):
 
 @admin.register(Poll)
 class PollAdmin(admin.ModelAdmin):
-    list_display = ('name', 'uuid', 'reward', 'deadline', 'is_active_status')
+    list_display = ('name', 'uuid', 'created_by', 'reward', 'deadline', 'is_active_status')
     inlines = [QuestionInline]
     list_editable = ('reward',)
     
@@ -61,6 +73,57 @@ class PollAdmin(admin.ModelAdmin):
 
     is_active_status.boolean = True
     is_active_status.short_description = "Активен?"
+
+
+@admin.register(PollCreationPayment)
+class PollCreationPaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tg_user",
+        "status",
+        "amount",
+        "currency",
+        "created_at",
+        "approved_at",
+        "consumed_at",
+        "consumed_poll",
+    )
+    list_filter = ("status", "currency", "created_at", "approved_at", "consumed_at")
+    search_fields = ("tg_user__id", "tg_user__fullname", "tg_user__username", "proof")
+    readonly_fields = ("created_at", "updated_at")
+    actions = ("approve_payments", "reject_payments")
+
+    def approve_payments(self, request, queryset):
+        from django.utils import timezone
+
+        updated = 0
+        for p in queryset.select_for_update():
+            if p.status != PollCreationPayment.Status.PENDING:
+                continue
+            p.status = PollCreationPayment.Status.APPROVED
+            p.approved_by = request.user
+            p.approved_at = timezone.now()
+            p.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+            updated += 1
+        self.message_user(request, f"Подтверждено оплат: {updated}")
+
+    approve_payments.short_description = "Подтвердить оплату (approve)"
+
+    def reject_payments(self, request, queryset):
+        from django.utils import timezone
+
+        updated = 0
+        for p in queryset.select_for_update():
+            if p.status != PollCreationPayment.Status.PENDING:
+                continue
+            p.status = PollCreationPayment.Status.REJECTED
+            p.approved_by = request.user
+            p.approved_at = timezone.now()
+            p.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+            updated += 1
+        self.message_user(request, f"Отклонено оплат: {updated}")
+
+    reject_payments.short_description = "Отклонить оплату (reject)"
 
 
 @admin.register(Question)

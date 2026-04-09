@@ -1,0 +1,65 @@
+{% extends "polls_webapp/base.html" %}
+
+{% block content %}
+  <div class="card mb-3">
+    <div class="card-header fw-semibold">Оплата</div>
+    <div class="card-body">
+      <div class="mb-2">
+        Первый опрос — бесплатно. Каждый следующий — <span class="fw-semibold">{{ price_uzs }} сум</span>.
+      </div>
+      <div class="alert alert-info mb-3">
+        В этой версии оплата ручная: оплатите по реквизитам и нажмите “Я оплатил”.
+        Администратор подтвердит оплату, и вы сможете создать следующий опрос.
+      </div>
+
+      <div class="border rounded p-3 mb-3">
+        <div class="fw-semibold mb-1">Реквизиты</div>
+        <div class="text-muted small mb-2">Карта</div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <code class="fs-6">{{ pay_card }}</code>
+          <span class="text-muted">·</span>
+          <span class="fw-semibold">{{ pay_holder }}</span>
+        </div>
+      </div>
+
+      <form method="post" class="border rounded p-3">
+        {% csrf_token %}
+        <div class="mb-2 fw-semibold">Я оплатил</div>
+        <div class="mb-2">
+          <label class="form-label small">Комментарий / номер транзакции (необязательно)</label>
+          <textarea class="form-control" name="proof" rows="2"></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit">Отправить на подтверждение</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header fw-semibold">Мои заявки</div>
+    <div class="table-responsive">
+      <table class="table mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Статус</th>
+            <th>Сумма</th>
+            <th>Создано</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+            <tr>
+              <td>{{ p.id }}</td>
+              <td>{{ p.get_status_display }}</td>
+              <td>{{ p.amount }} {{ p.currency }}</td>
+              <td>{{ p.created_at }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-muted">Заявок ещё нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock content %}
+

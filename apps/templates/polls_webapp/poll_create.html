@@ -1,0 +1,57 @@
+{% extends "polls_webapp/base.html" %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-header fw-semibold">Новый опрос</div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="mb-3">
+          <label class="form-label">Название</label>
+          {{ form.name }}
+          <div class="text-danger small">{{ form.name.errors }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Дедлайн</label>
+          {{ form.deadline }}
+          <div class="text-danger small">{{ form.deadline.errors }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Вознаграждение</label>
+          {{ form.reward }}
+          <div class="text-danger small">{{ form.reward.errors }}</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Описание (узбекский кириллица)</label>
+          {{ form.description }}
+          <div class="text-danger small">{{ form.description.errors }}</div>
+        </div>
+
+        <details class="mb-3">
+          <summary class="mb-2">Доп. языки</summary>
+          <div class="mb-3">
+            <label class="form-label">Описание (узбекский латиница)</label>
+            {{ form.description_uz_latn }}
+            <div class="text-danger small">{{ form.description_uz_latn.errors }}</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Описание (русский)</label>
+            {{ form.description_ru }}
+            <div class="text-danger small">{{ form.description_ru.errors }}</div>
+          </div>
+        </details>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" type="submit">Создать</button>
+          <a class="btn btn-outline-secondary" href="{% url 'polls_webapp:poll_list' %}">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock content %}
+

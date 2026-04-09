@@ -1,0 +1,69 @@
+{% extends "polls_webapp/base.html" %}
+
+{% block content %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div>
+          <div class="fw-semibold mb-1">Создание опросов</div>
+          <div class="text-muted small">
+            Первый опрос — бесплатно. Каждый следующий — 50 000 сум.
+          </div>
+        </div>
+        <div>
+          {% if eligibility.allowed %}
+            <a class="btn btn-primary" href="{% url 'polls_webapp:poll_create' %}">Создать опрос</a>
+          {% else %}
+            <a class="btn btn-primary" href="{% url 'polls_webapp:billing' %}">Оплатить следующий опрос</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header fw-semibold">Мои опросы</div>
+    <div class="table-responsive">
+      <table class="table mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Дедлайн</th>
+            <th>Вознаграждение</th>
+            <th>Статус</th>
+            <th class="text-end">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for poll in polls %}
+            <tr>
+              <td class="fw-semibold">{{ poll.name }}</td>
+              <td>{{ poll.deadline }}</td>
+              <td>{{ poll.reward }}</td>
+              <td>
+                {% if poll.is_active %}
+                  <span class="badge text-bg-success">Активен</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Не активен</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <a class="btn btn-outline-secondary" href="{% url 'polls_webapp:poll_edit' poll.uuid %}">Edit</a>
+                  <a class="btn btn-outline-secondary" href="{% url 'polls_webapp:poll_preview' poll.uuid %}">Preview</a>
+                  <a class="btn btn-outline-secondary" href="{% url 'polls_webapp:poll_publish' poll.uuid %}">Publish</a>
+                  <a class="btn btn-outline-secondary" href="{% url 'polls_webapp:poll_analytics' poll.uuid %}">Analytics</a>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="text-muted">Опросов пока нет.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock content %}
+

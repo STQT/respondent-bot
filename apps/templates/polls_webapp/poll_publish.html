@@ -1,0 +1,54 @@
+{% extends "polls_webapp/base.html" %}
+
+{% block content %}
+  <div class="mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:poll_list' %}">← К списку</a>
+  </div>
+
+  <div class="card">
+    <div class="card-header fw-semibold">Publish</div>
+    <div class="card-body">
+      {% if errors %}
+        <div class="alert alert-warning">
+          <div class="fw-semibold mb-1">Перед публикацией исправьте:</div>
+          <ul class="mb-0">
+            {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+      <div class="mb-2">Чтобы пользователь начал опрос, ему нужна ссылка на вашего бота с deep-link параметром.</div>
+
+      {% if deep_link %}
+        <div class="mb-2 text-muted small">Ссылка:</div>
+        <div class="input-group mb-3">
+          <input class="form-control" value="{{ deep_link }}" id="deepLinkField" readonly />
+          <button class="btn btn-outline-secondary" type="button" id="copyBtn">Скопировать</button>
+        </div>
+      {% else %}
+        <div class="alert alert-warning">
+          В настройках не указан <code>BOT_USERNAME</code>. Пока можете использовать UUID вручную:
+          <code>poll_{{ poll.uuid }}</code>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const btn = document.getElementById("copyBtn");
+      const field = document.getElementById("deepLinkField");
+      if (!btn || !field) return;
+      btn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(field.value);
+          btn.textContent = "Скопировано";
+          setTimeout(() => (btn.textContent = "Скопировать"), 1200);
+        } catch (e) {
+          btn.textContent = "Ошибка";
+          setTimeout(() => (btn.textContent = "Скопировать"), 1200);
+        }
+      });
+    })();
+  </script>
+{% endblock content %}
+

@@ -1,0 +1,27 @@
+{{ form.non_field_errors }}
+<div class="row g-2 mb-2">
+  <div class="col-9">
+    <label class="form-label small mb-1">Текст (узбекский кириллица)</label>
+    {{ form.text }}
+    <div class="text-danger small">{{ form.text.errors }}</div>
+  </div>
+  <div class="col-3">
+    <label class="form-label small mb-1">Порядок</label>
+    {{ form.order }}
+    <div class="text-danger small">{{ form.order.errors }}</div>
+  </div>
+</div>
+<details class="mb-2">
+  <summary class="small">Доп. языки</summary>
+  <div class="mt-2">
+    <label class="form-label small mb-1">Текст (узбекский латиница)</label>
+    {{ form.text_uz_latn }}
+    <div class="text-danger small">{{ form.text_uz_latn.errors }}</div>
+  </div>
+  <div class="mt-2">
+    <label class="form-label small mb-1">Текст (русский)</label>
+    {{ form.text_ru }}
+    <div class="text-danger small">{{ form.text_ru.errors }}</div>
+  </div>
+</details>
+

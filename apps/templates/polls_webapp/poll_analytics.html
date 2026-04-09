@@ -1,0 +1,117 @@
+{% extends "polls_webapp/base.html" %}
+{% load polls_webapp_extras %}
+
+{% block content %}
+  <div class="mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:poll_list' %}">← К списку</a>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header fw-semibold">Analytics: {{ poll.name }}</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-3">
+            <div class="text-muted small">Started</div>
+            <div class="fs-4 fw-semibold">{{ started_count }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-3">
+            <div class="text-muted small">Completed</div>
+            <div class="fs-4 fw-semibold">{{ completed_count }}</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-3">
+          <div class="border rounded p-3">
+            <div class="text-muted small">Completion rate</div>
+            <div class="fs-4 fw-semibold">{{ completion_rate }}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header fw-semibold d-flex align-items-center justify-content-between">
+      <span>Экспорт</span>
+      <form method="post" action="{% url 'polls_webapp:poll_export_start' poll.uuid %}">
+        {% csrf_token %}
+        <button class="btn btn-outline-primary btn-sm" type="submit">Запустить экспорт (xlsx)</button>
+      </form>
+    </div>
+    <div class="card-body">
+      <div class="text-muted small mb-2">
+        Экспорт формируется в фоне. Обновите страницу через минуту, чтобы увидеть ссылку на скачивание.
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Статус</th>
+              <th>Создано</th>
+              <th>Готово</th>
+              <th class="text-end">Файл</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in exports %}
+              <tr>
+                <td>{{ e.id }}</td>
+                <td>{{ e.get_status_display }}</td>
+                <td>{{ e.created_at }}</td>
+                <td>{{ e.completed_at|default:"—" }}</td>
+                <td class="text-end">
+                  {% if e.get_file_url %}
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ e.get_file_url }}">Скачать</a>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="text-muted">Экспортов пока нет.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header fw-semibold">По вопросам</div>
+    <div class="card-body vstack gap-3">
+      {% for q in questions %}
+        <div class="border rounded p-3">
+          <div class="fw-semibold mb-2">{{ q.order }}. {{ q.text }}</div>
+          {% with rows=choice_counts_by_question|get_item:q.id %}
+          {% if rows %}
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr>
+                    <th>Вариант</th>
+                    <th class="text-end">Выборов</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in rows %}
+                    <tr>
+                      <td>{{ row.text }}</td>
+                      <td class="text-end">{{ row.selected_count }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted small">Открытый вопрос или нет вариантов.</div>
+          {% endif %}
+          {% endwith %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock content %}
+

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block body %}
+  <div class="container py-5" style="max-width: 560px;">
+    <h4 class="mb-2">Вход</h4>
+    <p class="text-muted mb-4">
+      Откройте эту страницу из Telegram (WebApp). Мы автоматически авторизуем вас.
+    </p>
+
+    <div class="alert alert-warning d-none" id="tgAuthError"></div>
+
+    <form id="tgAuthForm" method="post" action="{% url 'polls_webapp:telegram_auth' %}">
+      {% csrf_token %}
+      <input type="hidden" name="initData" id="initDataField" />
+      <input type="hidden" name="next" value="{{ request.GET.next }}" />
+      <button class="btn btn-primary" type="submit">Войти через Telegram</button>
+    </form>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    (function () {
+      const err = document.getElementById("tgAuthError");
+      const initData = window.Telegram?.WebApp?.initData || "";
+      const initDataField = document.getElementById("initDataField");
+      initDataField.value = initData;
+
+      if (!initData) {
+        err.classList.remove("d-none");
+        err.textContent = "initData не найден. Откройте webapp из Telegram.";
+      }
+    })();
+  </script>
+{% endblock body %}
+

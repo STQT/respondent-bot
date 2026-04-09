@@ -1,0 +1,52 @@
+{% extends "polls_webapp/base.html" %}
+
+{% block content %}
+  <div class="mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:poll_edit' poll.uuid %}">← Назад к опросу</a>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header fw-semibold">Вопрос</div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            {% include "polls_webapp/partials/question_form.html" with poll=poll form=form %}
+            <button class="btn btn-primary" type="submit">Сохранить</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header fw-semibold">Варианты ответа</div>
+        <div class="card-body">
+          {% if question.type != "open" and choices|length < 2 %}
+            <div class="alert alert-warning py-2">
+              Для этого типа вопроса нужно минимум 2 варианта.
+            </div>
+          {% endif %}
+          <div id="choiceList">
+            {% include "polls_webapp/partials/choice_list.html" with poll=poll question=question choices=choices %}
+          </div>
+
+          <hr />
+
+          <div class="fw-semibold mb-2">Добавить вариант</div>
+          <form
+            hx-post="{% url 'polls_webapp:choice_create' poll.uuid question.id %}"
+            hx-target="#choiceList"
+            hx-swap="innerHTML"
+          >
+            {% csrf_token %}
+            {% include "polls_webapp/partials/choice_form.html" with poll=poll question=question form=choice_form %}
+            <button class="btn btn-outline-primary btn-sm" type="submit">Добавить</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+

@@ -104,6 +104,7 @@ LOCAL_APPS = [
     # Your stuff: custom apps go here
     "apps.bot",
     "apps.polls",
+    "apps.polls_webapp",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -345,10 +346,16 @@ SPECTACULAR_SETTINGS = {
 # Your stuff...
 # ------------------------------------------------------------------------------
 BOT_TOKEN = env("BOT_TOKEN", default="BOT")
+BOT_USERNAME = env("BOT_USERNAME", default="")
 BOT_WEBHOOK_PATH = "bot"
 BOT_HOST = env("HOST", default="https://bot.example.uz")
 PAYMENT_PROVIDER_TOKEN = env("PAYMENT_PROVIDER_TOKEN", default="BOT")
 OPERATOR_CHAT_ID = env("OPERATOR_CHAT_ID", default="BOT")
+
+# Webapp billing (manual payment)
+POLL_CREATION_PRICE_UZS = env.int("POLL_CREATION_PRICE_UZS", default=50000)
+POLL_CREATION_PAY_CARD = env("POLL_CREATION_PAY_CARD", default="")
+POLL_CREATION_PAY_HOLDER = env("POLL_CREATION_PAY_HOLDER", default="")
 
 # Тестовый Telegram ID для проверки рассылок
 TEST_TELEGRAM_ID = env.int("TEST_TELEGRAM_ID", default=123456789)

@@ -27,6 +27,7 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     # ...
     path("bot/", include("apps.bot.urls")),
+    path("webapp/", include("apps.polls_webapp.urls", namespace="polls_webapp")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]

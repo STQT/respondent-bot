@@ -1,0 +1,15 @@
+<div class="list-group">
+  {% for q in questions %}
+    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+       href="{% url 'polls_webapp:question_edit' poll.uuid q.id %}">
+      <div>
+        <div class="fw-semibold">{{ q.order }}. {{ q.text|truncatechars:80 }}</div>
+        <div class="text-muted small">{{ q.get_type_display }}</div>
+      </div>
+      <span class="badge text-bg-light">Edit</span>
+    </a>
+  {% empty %}
+    <div class="text-muted">Пока нет вопросов.</div>
+  {% endfor %}
+</div>
+
