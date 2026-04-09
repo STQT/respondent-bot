@@ -17,36 +17,50 @@
       <button class="btn btn-primary" type="submit">Войти через Telegram</button>
     </form>
   </div>
+{% endblock content %}
 
+{% block inline_javascript %}
+  {{ block.super }}
   <script>
     (function () {
-      const err = document.getElementById("tgAuthError");
-      const tg = window.Telegram?.WebApp;
-      if (!tg) {
-        err.classList.remove("d-none");
-        err.textContent = "Telegram WebApp API не найден. Откройте webapp внутри Telegram.";
-        return;
+      function run() {
+        const err = document.getElementById("tgAuthError");
+        const initDataField = document.getElementById("initDataField");
+        const form = document.getElementById("tgAuthForm");
+
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+          if (err) {
+            err.classList.remove("d-none");
+            err.textContent = "Telegram WebApp API не найден. Откройте webapp внутри Telegram.";
+          }
+          return;
+        }
+
+        try {
+          tg.ready();
+        } catch (_) {}
+
+        const initData = tg.initData || "";
+        if (initDataField) initDataField.value = initData;
+
+        if (!initData) {
+          if (err) {
+            err.classList.remove("d-none");
+            err.textContent = "initData не найден. Откройте webapp из Telegram.";
+          }
+          return;
+        }
+
+        if (form) form.submit();
       }
 
-      // Some clients expose initData reliably only after ready().
-      try {
-        tg.ready();
-      } catch (_) {}
-
-      const initData = tg.initData || "";
-      const initDataField = document.getElementById("initDataField");
-      initDataField.value = initData;
-
-      if (!initData) {
-        err.classList.remove("d-none");
-        err.textContent = "initData не найден. Откройте webapp из Telegram.";
-        return;
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run);
+      } else {
+        run();
       }
-
-      // If initData is present, login can happen immediately.
-      const form = document.getElementById("tgAuthForm");
-      if (form) form.submit();
     })();
   </script>
-{% endblock content %}
+{% endblock inline_javascript %}
 
