@@ -71,6 +71,20 @@ def get_main_menu_keyboard(lang='uz_cyrl'):
     return keyboard
 
 
+def get_webapp_inline_keyboard(lang: str = "uz_cyrl") -> InlineKeyboardMarkup:
+    texts = {
+        "uz_cyrl": "📝 Сўровнома тузиш",
+        "uz_latn": "📝 So'rovnoma tuzish",
+        "ru": "📝 Создать опрос",
+    }
+    text = texts.get(lang, texts["uz_cyrl"])
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=text, web_app=WebAppInfo(url=settings.WEBAPP_URL))]
+        ]
+    )
+
+
 def get_text(key, lang='uz_cyrl'):
     """Получить текст на нужном языке"""
     texts = {
@@ -213,7 +227,7 @@ async def show_menu(message: Message, user: TGUser | None):
     
     await message.answer(
         "Меню:",
-        reply_markup=get_main_menu_keyboard(user.lang)
+        reply_markup=get_webapp_inline_keyboard(user.lang)
     )
 
 
