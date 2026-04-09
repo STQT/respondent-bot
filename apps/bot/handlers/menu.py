@@ -3,8 +3,17 @@ from aiogram import Router
 from aiogram.enums import ChatAction
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    Message,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
+)
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.utils import timezone
 from django.db.models import Q
 
@@ -20,6 +29,7 @@ def get_main_menu_keyboard(lang='uz_cyrl'):
     """Возвращает главное меню бота в зависимости от языка"""
     texts = {
         'uz_cyrl': {
+            'webapp': '📝 Сўровнома тузиш',
             'balance': '💰 Баланс',
             'language': '🌐 Тилни ўзгартириш',
             'active_polls': '📊 Актив сўровномалар',
@@ -27,6 +37,7 @@ def get_main_menu_keyboard(lang='uz_cyrl'):
             'withdrawal_history': '📜 Чиқариш тарихи'
         },
         'uz_latn': {
+            'webapp': "📝 So'rovnoma tuzish",
             'balance': "💰 Balans",
             'language': "🌐 Tilni o'zgartirish",
             'active_polls': "📊 Aktiv so'rovnomalar",
@@ -34,6 +45,7 @@ def get_main_menu_keyboard(lang='uz_cyrl'):
             'withdrawal_history': "📜 Chiqarish tarixi"
         },
         'ru': {
+            'webapp': '📝 Создать опрос',
             'balance': '💰 Баланс',
             'language': '🌐 Изменить язык',
             'active_polls': '📊 Активные опросы',
@@ -46,6 +58,7 @@ def get_main_menu_keyboard(lang='uz_cyrl'):
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
+            [KeyboardButton(text=text['webapp'], web_app=WebAppInfo(url=settings.WEBAPP_URL))],
             [KeyboardButton(text=text['balance'])],
             [KeyboardButton(text=text['language'])],
             [KeyboardButton(text=text['active_polls'])],
