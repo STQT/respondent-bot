@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "polls_webapp/base.html" %}
 {% load static i18n %}
 
 {% block body %}
@@ -18,18 +18,34 @@
     </form>
   </div>
 
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
     (function () {
       const err = document.getElementById("tgAuthError");
-      const initData = window.Telegram?.WebApp?.initData || "";
+      const tg = window.Telegram?.WebApp;
+      if (!tg) {
+        err.classList.remove("d-none");
+        err.textContent = "Telegram WebApp API не найден. Откройте webapp внутри Telegram.";
+        return;
+      }
+
+      // Some clients expose initData reliably only after ready().
+      try {
+        tg.ready();
+      } catch (_) {}
+
+      const initData = tg.initData || "";
       const initDataField = document.getElementById("initDataField");
       initDataField.value = initData;
 
       if (!initData) {
         err.classList.remove("d-none");
         err.textContent = "initData не найден. Откройте webapp из Telegram.";
+        return;
       }
+
+      // If initData is present, login can happen immediately.
+      const form = document.getElementById("tgAuthForm");
+      if (form) form.submit();
     })();
   </script>
 {% endblock body %}

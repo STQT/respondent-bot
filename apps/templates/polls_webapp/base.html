@@ -3,19 +3,19 @@
 
 {% block body %}
   <div class="container py-3">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <div>
-        <div class="fw-semibold">Опросы</div>
-        {% if tg_user %}
+    {% if tg_user %}
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <div class="fw-semibold">Опросы</div>
           <div class="text-muted small">@{{ tg_user.username }} · {{ tg_user.fullname }}</div>
-        {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:poll_list' %}">Мои опросы</a>
+          <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:billing' %}">Оплата</a>
+          <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:logout' %}">Выйти</a>
+        </div>
       </div>
-      <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:poll_list' %}">Мои опросы</a>
-        <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:billing' %}">Оплата</a>
-        <a class="btn btn-outline-secondary btn-sm" href="{% url 'polls_webapp:logout' %}">Выйти</a>
-      </div>
-    </div>
+    {% endif %}
 
     {% block content %}{% endblock content %}
   </div>
