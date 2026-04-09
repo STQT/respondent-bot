@@ -124,7 +124,10 @@ def telegram_auth(request: HttpRequest) -> HttpResponse:
         return HttpResponseBadRequest(str(e))
 
     if not ok:
-        return HttpResponseForbidden("Invalid initData signature")
+        return HttpResponseForbidden(
+            "Invalid initData signature. "
+            "Usually this means the server BOT_TOKEN does not match the bot that opened the WebApp."
+        )
 
     # Extract user JSON from initData
     # initData contains `user` as JSON string.

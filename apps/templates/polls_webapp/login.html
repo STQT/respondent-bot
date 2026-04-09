@@ -16,6 +16,13 @@
       <input type="hidden" name="next" value="{{ request.GET.next }}" />
       <button class="btn btn-primary" type="submit">Войти через Telegram</button>
     </form>
+
+    {% if request.GET.debug == "1" %}
+      <details class="mt-4">
+        <summary class="text-muted">Debug (скопируй и пришли сюда)</summary>
+        <pre class="mt-2 small" id="tgDebugBox" style="white-space: pre-wrap; word-break: break-word;"></pre>
+      </details>
+    {% endif %}
   </div>
 {% endblock content %}
 
@@ -27,8 +34,32 @@
         const err = document.getElementById("tgAuthError");
         const initDataField = document.getElementById("initDataField");
         const form = document.getElementById("tgAuthForm");
+        const debugBox = document.getElementById("tgDebugBox");
 
         const tg = window.Telegram?.WebApp;
+        if (debugBox) {
+          const safeUser = tg?.initDataUnsafe?.user
+            ? {
+                id: tg.initDataUnsafe.user.id,
+                username: tg.initDataUnsafe.user.username || null,
+                first_name: tg.initDataUnsafe.user.first_name || null,
+                last_name: tg.initDataUnsafe.user.last_name || null,
+              }
+            : null;
+          const debug = {
+            hasTelegram: Boolean(window.Telegram),
+            hasWebApp: Boolean(tg),
+            platform: tg?.platform || null,
+            version: tg?.version || null,
+            colorScheme: tg?.colorScheme || null,
+            initDataLength: (tg?.initData || "").length,
+            user: safeUser,
+            location: window.location.href,
+            userAgent: navigator.userAgent,
+          };
+          debugBox.textContent = JSON.stringify(debug, null, 2);
+        }
+
         if (!tg) {
           if (err) {
             err.classList.remove("d-none");
