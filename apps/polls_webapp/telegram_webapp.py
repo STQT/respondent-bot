@@ -22,7 +22,10 @@ def _build_data_check_string(init_data: str) -> tuple[str, str, dict[str, str]]:
 def verify_init_data(init_data: str, bot_token: str, *, max_age_seconds: int = 86400) -> bool:
     data_check_string, received_hash, data = _build_data_check_string(init_data)
 
-    secret_key = hashlib.sha256(bot_token.encode("utf-8")).digest()
+    # Telegram WebApp validation uses a derived secret key:
+    # secret_key = HMAC_SHA256(key="WebAppData", msg=bot_token)
+    # https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
+    secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
     calculated = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(calculated, received_hash):
         return False
