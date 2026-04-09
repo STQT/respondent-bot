@@ -1,8 +1,8 @@
 {% extends "polls_webapp/base.html" %}
 {% load static i18n %}
 
-{% block body %}
-  <div class="container py-5" style="max-width: 560px;">
+{% block content %}
+  <div class="py-5" style="max-width: 560px;">
     <h4 class="mb-2">Вход</h4>
     <p class="text-muted mb-4">
       Откройте эту страницу из Telegram (WebApp). Мы автоматически авторизуем вас.
@@ -48,5 +48,5 @@
       if (form) form.submit();
     })();
   </script>
-{% endblock body %}
+{% endblock content %}
 
