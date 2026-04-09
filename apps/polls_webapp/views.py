@@ -442,10 +442,3 @@ def poll_export_start(request: HttpRequest, poll_uuid) -> HttpResponse:
     )
     export_respondents_task.delay(export_file.id)
     return redirect("polls_webapp:poll_analytics", poll_uuid=poll.uuid)
-
-
-token = settings.BOT_TOKEN
-print("BOT_TOKEN prefix =", token[:10] + "...")
-with urllib.request.urlopen(f"https://api.telegram.org/bot{token}/getMe") as r:
-    me = json.load(r)["result"]
-print("BOT from token =", {"id": me["id"], "username": me.get("username")})
